@@ -2,9 +2,21 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search, ShieldAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "@/components/admin-error";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorAlert,
+  LoadingRow,
+  PageHeader,
+  SearchInput,
+  TableShell,
+  Td,
+  Th,
+  Tr,
+} from "@/components/ui";
 
 type OrgItem = {
   id: string;
@@ -59,126 +71,128 @@ export default function AdminOrgsPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <form onSubmit={submitSearch} className="flex gap-2">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-3 text-muted" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name, email, or organization ID..."
-            className="w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] py-2.5 pl-9 pr-3 text-sm text-ink placeholder-muted focus:border-teal-600 focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          className="rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white"
-        >
+    <div>
+      <PageHeader
+        title="Organizations"
+        description={`${total.toLocaleString()} total${q ? ` matching "${q}"` : ""}`}
+      />
+      <ErrorAlert message={error} />
+
+      <form onSubmit={submitSearch} className="mb-4 flex gap-2">
+        <SearchInput
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder="Search by name, email, or organization ID…"
+          className="max-w-md flex-1"
+        />
+        <Button type="submit" variant="primary">
           Search
-        </button>
+        </Button>
+        {q && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setSearchInput("");
+              setQ("");
+              setOffset(0);
+            }}
+          >
+            Clear
+          </Button>
+        )}
       </form>
 
-      <AdminError message={error} />
-
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-16 text-sm text-muted">
-          <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
-          <span>Loading organizations...</span>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <LoadingRow label="Loading organizations…" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <EmptyState
+            title="No organizations found"
+            description={
+              q
+                ? "Try a different search term."
+                : "Organizations will appear here once customers sign up."
+            }
+          />
         </div>
       ) : (
         <>
-          <p className="text-xs text-muted">
-            {total.toLocaleString()} organization{total === 1 ? "" : "s"}
-            {q ? ` matching "${q}"` : ""}
-          </p>
-          <div className="overflow-x-auto rounded-2xl bg-surface shadow-card dark:border dark:border-white/[0.06]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--divider)] text-left text-xs text-muted">
-                  <th className="px-4 py-3 font-semibold">Organization</th>
-                  <th className="px-4 py-3 font-semibold">Owner</th>
-                  <th className="px-4 py-3 font-semibold">Plan</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((org) => (
-                  <tr
-                    key={org.id}
-                    className="border-b border-[var(--divider)] last:border-0 hover:bg-[var(--inset)]"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/orgs/${org.id}`}
-                        className="font-semibold text-ink hover:text-brand hover:underline"
-                      >
-                        {org.name}
-                      </Link>
-                      <div className="font-mono text-[10px] text-muted">{org.id.slice(0, 8)}…</div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted">
-                      {org.owner_email || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 text-[11px] font-bold text-teal-800 dark:text-teal-300">
-                        {org.plan_name}
+          <TableShell>
+            <thead>
+              <tr>
+                <Th>Organization</Th>
+                <Th>Owner</Th>
+                <Th>Plan</Th>
+                <Th>Status</Th>
+                <Th className="text-right">Created</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((org) => (
+                <Tr key={org.id}>
+                  <Td>
+                    <Link
+                      href={`/orgs/${org.id}`}
+                      className="font-semibold text-gray-900 hover:text-indigo-600 hover:underline"
+                    >
+                      {org.name}
+                    </Link>
+                    <div className="font-mono text-[11px] text-gray-400">
+                      {org.id.slice(0, 8)}…
+                    </div>
+                  </Td>
+                  <Td className="text-[13px] text-gray-500">
+                    {org.owner_email || "—"}
+                  </Td>
+                  <Td>
+                    <Badge tone="indigo">{org.plan_name}</Badge>
+                    {org.plan_slug && (
+                      <span className="ml-2 text-[11px] text-gray-400">
+                        admin-assigned
                       </span>
-                      {org.plan_slug && (
-                        <span className="ml-1.5 text-[10px] text-muted">admin-assigned</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {org.is_suspended ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 text-[11px] font-bold text-rose-700 dark:text-rose-300">
-                          <ShieldAlert size={11} />
-                          Suspended
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted">
-                      {org.created_at
-                        ? new Date(org.created_at).toLocaleDateString()
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">
-                      No organizations found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
+                    )}
+                  </Td>
+                  <Td>
+                    {org.is_suspended ? (
+                      <Badge tone="red">Suspended</Badge>
+                    ) : (
+                      <Badge tone="green">Active</Badge>
+                    )}
+                  </Td>
+                  <Td className="text-right text-[13px] text-gray-500">
+                    {org.created_at
+                      ? new Date(org.created_at).toLocaleDateString()
+                      : "—"}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </TableShell>
+
+          <div className="mt-4 flex items-center justify-between">
+            <Button
+              variant="secondary"
               disabled={offset === 0}
               onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
-              className="inline-flex items-center gap-1 rounded-lg bg-[var(--inset)] px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
             >
-              <ChevronLeft size={13} />
-              <span>Previous</span>
-            </button>
-            <span className="text-xs text-muted">
-              {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
+              <ChevronLeft size={14} />
+              Previous
+            </Button>
+            <span className="text-[13px] text-gray-500">
+              {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of{" "}
+              {total.toLocaleString()}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               disabled={offset + PAGE_SIZE >= total}
               onClick={() => setOffset((o) => o + PAGE_SIZE)}
-              className="inline-flex items-center gap-1 rounded-lg bg-[var(--inset)] px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
             >
-              <span>Next</span>
-              <ChevronRight size={13} />
-            </button>
+              Next
+              <ChevronRight size={14} />
+            </Button>
           </div>
         </>
       )}

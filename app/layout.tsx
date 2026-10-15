@@ -3,21 +3,58 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Loader2, ShieldAlert } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  KeyRound,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  ScrollText,
+  ShieldAlert,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { ClerkTokenBridge } from "@/components/clerk-token-bridge";
 import { apiFetch, getAdminApiKey, setAdminApiKey } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import "./globals.css";
 
 type StaffMe = { email: string; role: string };
 
 const NAV = [
-  { href: "/", label: "Overview" },
-  { href: "/plans", label: "Plans" },
-  { href: "/orgs", label: "Organizations" },
-  { href: "/staff", label: "Staff" },
-  { href: "/audit", label: "Audit log" },
+  {
+    section: "Manage",
+    items: [
+      { href: "/", label: "Overview", icon: LayoutDashboard },
+      { href: "/orgs", label: "Organizations", icon: Building2 },
+      { href: "/plans", label: "Plans", icon: CreditCard },
+    ],
+  },
+  {
+    section: "Access",
+    items: [{ href: "/staff", label: "Staff", icon: Users }],
+  },
+  {
+    section: "System",
+    items: [{ href: "/audit", label: "Audit log", icon: ScrollText }],
+  },
 ];
+
+const PAGE_TITLES: Record<string, string> = {
+  "/": "Overview",
+  "/orgs": "Organizations",
+  "/plans": "Plans",
+  "/staff": "Staff",
+  "/audit": "Audit log",
+};
+
+function pageTitleFor(pathname: string | null): string {
+  if (!pathname) return "Admin";
+  if (pathname.startsWith("/orgs/")) return "Organization";
+  return PAGE_TITLES[pathname] ?? "Admin";
+}
 
 function AdminGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -118,7 +155,6 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   }, [loading, authLoaded]);
 
   // Once we're sure Clerk is stuck, probe its servers directly from this browser.
-  // A failed fetch = network/DNS block; a successful one = Clerk init problem.
   useEffect(() => {
     if (authLoaded || !slowLoad || netCheck !== null || !clerkHost) return;
     setNetCheck("pending");
@@ -144,251 +180,342 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
   if (isPublicRoute) return <>{children}</>;
 
+  const isLoading = loading || (!authLoaded && !usingApiKey);
+  const showGate = !isLoading && (denied || !me);
+
   return (
-    <div className="min-h-screen bg-[var(--canvas)]">
-      <header className="border-b border-[var(--divider)] bg-[var(--surface)]">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="font-bold text-slate-900 dark:text-text-main text-base">
-              ChatCoat Admin
-            </span>
-            {me && (
-              <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 px-2.5 py-0.5 text-xs font-bold text-purple-800 dark:text-purple-300">
-                {me.role.replace("_", " ")}
-              </span>
-            )}
-            {usingApiKey && me && (
-              <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-                API key
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {me && <span className="text-xs text-muted">{me.email}</span>}
-            {usingApiKey && (
-              <button
-                type="button"
-                onClick={signOutKey}
-                className="text-xs font-semibold text-muted hover:text-ink"
-              >
-                Sign out
-              </button>
-            )}
+    <div className="min-h-screen bg-[#f6f7f9]">
+      {/* Sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-[248px] flex-col bg-[#0d1117]">
+        <div className="flex h-16 items-center gap-2.5 border-b border-white/[0.07] px-5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
+            <ShieldCheck size={16} className="text-white" />
+          </span>
+          <div>
+            <div className="text-[13px] font-bold leading-tight text-white">
+              ChatCoat
+            </div>
+            <div className="text-[11px] font-medium leading-tight text-gray-500">
+              Admin Console
+            </div>
           </div>
         </div>
-        {me && (
-          <nav className="mx-auto max-w-6xl px-4 pb-3 flex flex-wrap gap-1.5">
-            {NAV.map((item) => {
-              const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname?.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    active
-                      ? "bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300"
-                      : "text-muted hover:text-ink hover:bg-[var(--inset)]"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        )}
-      </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        {loading || (!authLoaded && !usingApiKey) ? (
-          <div className="mx-auto max-w-md py-24 text-center">
-            <div className="flex items-center justify-center gap-3 text-sm text-muted">
-              <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
-              <span>Checking admin access...</span>
-            </div>
-            {slowLoad && (
-              <div className="mt-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 p-4 text-xs text-amber-800 dark:text-amber-300">
-                {!authLoaded ? (
-                  clerkKeyPresent ? (
-                    <p>
-                      The Clerk key is in this build (<code className="font-semibold">{clerkKeyPrefix}…</code>),
-                      but sign-in isn't initializing.{" "}
-                      {netCheck === "failed" && clerkHost && (
-                        <>
-                          Your browser cannot reach <code className="font-semibold">{clerkHost}</code> at
-                          all — something on this device or connection is blocking
-                          it (VPN, firewall, antivirus web shield, or DNS). Try a
-                          different device, or set your DNS to 8.8.8.8.
-                        </>
-                      )}
-                      {netCheck === "ok" && (
-                        <>
-                          Your browser <b>can</b> reach Clerk's servers, so the
-                          stall is in sign-in initialization itself — try a
-                          completely different browser.
-                        </>
-                      )}
-                      {netCheck !== "failed" && netCheck !== "ok" && (
-                        <>Running a connection check…</>
-                      )}
-                    </p>
-                  ) : (
-                    <p>
-                      This build contains <b>no</b> Clerk publishable key, so
-                      sign-in can never load. Set{" "}
-                      <code className="font-semibold">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>{" "}
-                      in Vercel → Settings → Environment Variables, then{" "}
-                      <b>redeploy</b> (the key is baked in at build time — saving
-                      the variable alone changes nothing).
-                    </p>
-                  )
-                ) : (
-                  <p>
-                    The API is taking unusually long to respond. It may be waking
-                    up from sleep — give it a moment and retry.
-                  </p>
-                )}
-                <div className="mt-3 flex items-center justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="font-semibold text-brand hover:underline"
-                  >
-                    Retry
-                  </button>
-                  <span className="text-amber-700/60 dark:text-amber-200/40">·</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowKeyForm((v) => !v)}
-                    className="font-semibold text-brand hover:underline"
-                  >
-                    {showKeyForm ? "Hide API key form" : "Use admin API key instead"}
-                  </button>
-                </div>
-                {showKeyForm && (
-                  <form onSubmit={submitKey} className="mt-3 text-left">
-                    <input
-                      type="password"
-                      value={keyInput}
-                      onChange={(e) => setKeyInput(e.target.value)}
-                      placeholder="Paste ADMIN_API_KEY from Render"
-                      autoComplete="off"
-                      className="w-full rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-black/20 px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand/40"
-                    />
-                    {keyError && (
-                      <p className="mt-1.5 font-semibold text-rose-600 dark:text-rose-400">
-                        {keyError}
-                      </p>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={verifyingKey || !keyInput.trim()}
-                      className="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-                    >
-                      {verifyingKey && <Loader2 size={13} className="animate-spin" />}
-                      <span>Sign in with key</span>
-                    </button>
-                  </form>
-                )}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {NAV.map((group) => (
+            <div key={group.section} className="mb-5 last:mb-0">
+              <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-600">
+                {group.section}
               </div>
-            )}
-          </div>
-        ) : denied || !me ? (
-          <div className="mx-auto max-w-md py-24 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <ShieldAlert size={22} />
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active =
+                    item.href === "/"
+                      ? pathname === "/"
+                      : pathname?.startsWith(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors",
+                        active
+                          ? "bg-indigo-600 text-white"
+                          : "text-gray-400 hover:bg-white/[0.06] hover:text-gray-100"
+                      )}
+                    >
+                      <Icon size={16} strokeWidth={active ? 2.2 : 2} />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-            {usingApiKey ? (
-              <>
-                <h1 className="mt-4 text-lg font-bold text-ink">Invalid API key</h1>
-                <p className="mt-2 text-sm text-muted">
-                  The saved admin API key was rejected. Clear it and try again,
-                  or check the <code className="font-semibold">ADMIN_API_KEY</code> value
-                  in your API's Render environment.
-                </p>
+          ))}
+        </nav>
+
+        <div className="border-t border-white/[0.07] p-3">
+          {me ? (
+            <div className="rounded-lg bg-white/[0.04] px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600/20 text-[11px] font-bold text-indigo-300">
+                  {(me.email?.[0] || "?").toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[12px] font-semibold text-gray-200">
+                    {me.email}
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    {me.role.replace("_", " ")}
+                    {usingApiKey && " · API key"}
+                  </div>
+                </div>
+              </div>
+              {usingApiKey && (
                 <button
                   type="button"
                   onClick={signOutKey}
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white"
+                  className="mt-2 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-gray-400 hover:bg-white/[0.06] hover:text-gray-200"
                 >
-                  Clear key and sign in again
+                  <LogOut size={13} />
+                  <span>Sign out</span>
                 </button>
-              </>
-            ) : !isSignedIn ? (
-              <>
-                <h1 className="mt-4 text-lg font-bold text-ink">Sign in required</h1>
-                <p className="mt-2 text-sm text-muted">
-                  Sign in with your ChatCoat account to access the admin dashboard.
-                </p>
-                <Link
-                  href="/sign-in"
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white"
-                >
-                  Sign in
-                </Link>
-              </>
-            ) : (
-              <>
-                <h1 className="mt-4 text-lg font-bold text-ink">Admin access required</h1>
-                <p className="mt-2 text-sm text-muted">
-                  Signed in as {user?.primaryEmailAddress?.emailAddress ?? "your account"},
-                  which is not a staff member. If this is a fresh setup, claim the first super_admin
-                  access below — the bootstrap closes permanently after the first
-                  claim.
-                </p>
-                {claimMsg && (
-                  <p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                    {claimMsg}
+              )}
+            </div>
+          ) : (
+            <div className="px-2 py-1 text-[11px] text-gray-600">
+              Not signed in
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="pl-[248px]">
+        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
+          <div className="flex h-16 items-center justify-between px-8">
+            <h1 className="text-[15px] font-bold tracking-tight text-gray-900">
+              {pageTitleFor(pathname)}
+            </h1>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Production
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[1200px] px-8 py-7">
+          {isLoading ? (
+            <div className="mx-auto max-w-md py-24 text-center">
+              <div className="flex items-center justify-center gap-3 text-sm text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+                <span>Checking admin access…</span>
+              </div>
+              {slowLoad && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-xs text-amber-900">
+                  {!authLoaded && !usingApiKey ? (
+                    clerkKeyPresent ? (
+                      <p>
+                        The Clerk key is in this build (
+                        <code className="font-semibold">{clerkKeyPrefix}…</code>
+                        ), but sign-in isn't initializing.{" "}
+                        {netCheck === "failed" && clerkHost && (
+                          <>
+                            Your browser cannot reach{" "}
+                            <code className="font-semibold">{clerkHost}</code>{" "}
+                            at all — something on this device or connection is
+                            blocking it (VPN, firewall, antivirus web shield,
+                            or DNS).
+                          </>
+                        )}
+                        {netCheck === "ok" && (
+                          <>
+                            Your browser <b>can</b> reach Clerk's servers, so
+                            the stall is in sign-in initialization itself — try
+                            a completely different browser.
+                          </>
+                        )}
+                        {netCheck !== "failed" && netCheck !== "ok" && (
+                          <>Running a connection check…</>
+                        )}
+                      </p>
+                    ) : (
+                      <p>
+                        This build contains <b>no</b> Clerk publishable key, so
+                        sign-in can never load. Set{" "}
+                        <code className="font-semibold">
+                          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+                        </code>{" "}
+                        in Vercel → Settings → Environment Variables, then{" "}
+                        <b>redeploy</b>.
+                      </p>
+                    )
+                  ) : (
+                    <p>
+                      The API is taking unusually long to respond. It may be
+                      waking up from sleep — give it a moment and retry.
+                    </p>
+                  )}
+                  <div className="mt-3 flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="font-semibold text-indigo-700 hover:underline"
+                    >
+                      Retry
+                    </button>
+                    <span className="text-amber-700/50">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyForm((v) => !v)}
+                      className="font-semibold text-indigo-700 hover:underline"
+                    >
+                      {showKeyForm ? "Hide API key form" : "Use admin API key instead"}
+                    </button>
+                  </div>
+                  {showKeyForm && (
+                    <form onSubmit={submitKey} className="mt-3">
+                      <input
+                        type="password"
+                        value={keyInput}
+                        onChange={(e) => setKeyInput(e.target.value)}
+                        placeholder="Paste ADMIN_API_KEY from Render"
+                        autoComplete="off"
+                        className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                      {keyError && (
+                        <p className="mt-1.5 font-semibold text-rose-700">
+                          {keyError}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={verifyingKey || !keyInput.trim()}
+                        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {verifyingKey && (
+                          <Loader2 size={13} className="animate-spin" />
+                        )}
+                        <span>Sign in with key</span>
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : showGate ? (
+            <div className="mx-auto max-w-md py-20 text-center">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-200">
+                <ShieldAlert size={22} />
+              </span>
+              {usingApiKey ? (
+                <>
+                  <h2 className="mt-4 text-lg font-bold text-gray-900">
+                    Invalid API key
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-500">
+                    The saved admin API key was rejected. Clear it and try
+                    again, or check the{" "}
+                    <code className="font-semibold">ADMIN_API_KEY</code> value
+                    in your API's Render environment.
                   </p>
-                )}
-                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={signOutKey}
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-700"
+                  >
+                    Clear key and sign in again
+                  </button>
+                </>
+              ) : !isSignedIn ? (
+                <>
+                  <h2 className="mt-4 text-lg font-bold text-gray-900">
+                    Sign in required
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Sign in with your ChatCoat account to access the admin
+                    console.
+                  </p>
+                  <Link
+                    href="/sign-in"
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-700"
+                  >
+                    Sign in
+                  </Link>
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyForm((v) => !v)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-900"
+                    >
+                      <KeyRound size={13} />
+                      <span>Use an admin API key instead</span>
+                    </button>
+                  </div>
+                  {showKeyForm && (
+                    <form
+                      onSubmit={submitKey}
+                      className="mx-auto mt-3 max-w-sm rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm"
+                    >
+                      <input
+                        type="password"
+                        value={keyInput}
+                        onChange={(e) => setKeyInput(e.target.value)}
+                        placeholder="Paste ADMIN_API_KEY from Render"
+                        autoComplete="off"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                      {keyError && (
+                        <p className="mt-1.5 text-xs font-semibold text-rose-600">
+                          {keyError}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={verifyingKey || !keyInput.trim()}
+                        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {verifyingKey && (
+                          <Loader2 size={13} className="animate-spin" />
+                        )}
+                        <span>Sign in with key</span>
+                      </button>
+                    </form>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2 className="mt-4 text-lg font-bold text-gray-900">
+                    Admin access required
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Signed in as{" "}
+                    {user?.primaryEmailAddress?.emailAddress ?? "your account"},
+                    which is not a staff member. If this is a fresh setup,
+                    claim the first super_admin access below — the bootstrap
+                    closes permanently after the first claim.
+                  </p>
+                  {claimMsg && (
+                    <p className="mx-auto mt-3 max-w-sm rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+                      {claimMsg}
+                    </p>
+                  )}
                   <button
                     type="button"
                     onClick={claimAdmin}
                     disabled={claiming}
-                    className="inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                   >
                     {claiming && <Loader2 size={13} className="animate-spin" />}
                     <span>Claim admin access</span>
                   </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          children
-        )}
-      </main>
+                </>
+              )}
+            </div>
+          ) : (
+            children
+          )}
+        </main>
+      </div>
     </div>
   );
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <ClerkProvider
       signInUrl="/sign-in"
       signUpUrl="/sign-in"
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
     >
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                try {
-                  const t = localStorage.getItem("chatcoat_theme");
-                  if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-                    document.documentElement.classList.add("dark");
-                  } else {
-                    document.documentElement.classList.remove("dark");
-                  }
-                } catch (e) {}
-              `,
-            }}
-          />
-        </head>
+      <html lang="en">
         <body>
           <ClerkTokenBridge />
           <AdminGate>{children}</AdminGate>

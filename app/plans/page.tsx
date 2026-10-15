@@ -3,7 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, Power } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "@/components/admin-error";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorAlert,
+  LoadingRow,
+  Modal,
+  PageHeader,
+  TableShell,
+  Td,
+  Th,
+  Tr,
+  inputClassName,
+  labelClassName,
+} from "@/components/ui";
 
 type Plan = {
   slug: string;
@@ -44,11 +58,11 @@ const EMPTY_FORM: Plan = {
 };
 
 const LIMIT_FIELDS: { key: keyof Plan; label: string }[] = [
-  { key: "max_profiles", label: "Connected profiles" },
-  { key: "max_posts_per_month", label: "Posts / month" },
-  { key: "ai_credits", label: "AI credits / month" },
+  { key: "max_profiles", label: "Profiles" },
+  { key: "max_posts_per_month", label: "Posts / mo" },
+  { key: "ai_credits", label: "AI credits" },
   { key: "max_workspaces", label: "Workspaces" },
-  { key: "max_campaigns_per_month", label: "Campaigns / month" },
+  { key: "max_campaigns_per_month", label: "Campaigns / mo" },
 ];
 
 function formatMoney(cents: number, currency: string) {
@@ -172,195 +186,207 @@ export default function AdminPlansPage() {
     setForm((f) => ({ ...f, [key]: value }));
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted">
-          Limits and prices here are live — editing a plan changes what every
-          organization on it can do, immediately.
-        </p>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand hover:bg-brand-hover px-3.5 py-2 text-xs font-semibold text-white transition-colors"
-        >
-          <Plus size={14} />
-          <span>New plan</span>
-        </button>
-      </div>
-
-      <AdminError message={error} />
+    <div>
+      <PageHeader
+        title="Plans"
+        description="Limits and prices are live — editing a plan changes what every organization on it can do, immediately."
+        actions={
+          <Button variant="primary" onClick={openCreate}>
+            <Plus size={14} />
+            New plan
+          </Button>
+        }
+      />
+      <ErrorAlert message={error} />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-16 text-sm text-muted">
-          <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
-          <span>Loading plans...</span>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <LoadingRow label="Loading plans…" />
+        </div>
+      ) : plans.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <EmptyState
+            title="No plans yet"
+            description="Create your first plan to start tiering organizations."
+            action={
+              <Button variant="primary" onClick={openCreate}>
+                <Plus size={14} /> New plan
+              </Button>
+            }
+          />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {plans.map((plan) => (
-            <div
-              key={plan.slug}
-              className={`rounded-2xl bg-surface shadow-card dark:border dark:border-white/[0.06] p-5 ${
-                plan.is_active ? "" : "opacity-60"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-ink">{plan.name}</h3>
-                    {!plan.is_active && (
-                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-muted">
-                        INACTIVE
-                      </span>
-                    )}
+        <TableShell>
+          <thead>
+            <tr>
+              <Th>Plan</Th>
+              <Th>Price</Th>
+              <Th className="text-right">Profiles</Th>
+              <Th className="text-right">Posts / mo</Th>
+              <Th className="text-right">AI credits</Th>
+              <Th className="text-right">Workspaces</Th>
+              <Th className="text-right">Orgs</Th>
+              <Th>Status</Th>
+              <Th className="text-right">Actions</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {plans.map((plan) => (
+              <Tr key={plan.slug} className={!plan.is_active ? "opacity-55" : ""}>
+                <Td>
+                  <div className="font-semibold text-gray-900">{plan.name}</div>
+                  <div className="font-mono text-[11px] text-gray-400">
+                    {plan.slug}
                   </div>
-                  <p className="mt-0.5 text-xs text-muted">
-                    <span className="font-mono">{plan.slug}</span> ·{" "}
-                    {formatMoney(plan.price_cents, plan.currency)} / {plan.billing_interval}
-                    {" · "}
-                    {plan.organizations_on_plan} org
-                    {plan.organizations_on_plan === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(plan)}
-                    title="Edit plan"
-                    className="p-2 rounded-lg bg-[var(--inset)] text-muted hover:text-ink transition-colors"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleActive(plan)}
-                    title={plan.is_active ? "Deactivate plan" : "Reactivate plan"}
-                    className="p-2 rounded-lg bg-[var(--inset)] text-muted hover:text-ink transition-colors"
-                  >
-                    <Power size={14} />
-                  </button>
-                </div>
-              </div>
-              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
-                {LIMIT_FIELDS.map(({ key, label }) => (
-                  <div key={key}>
-                    <dt className="text-muted">{label}</dt>
-                    <dd className="font-bold text-ink">
-                      {(plan[key] as number).toLocaleString()}
-                    </dd>
+                </Td>
+                <Td className="tnum whitespace-nowrap text-[13px] text-gray-700">
+                  {formatMoney(plan.price_cents, plan.currency)}
+                  <span className="text-gray-400"> / {plan.billing_interval}</span>
+                </Td>
+                <Td className="tnum text-right text-[13px] text-gray-700">
+                  {plan.max_profiles.toLocaleString()}
+                </Td>
+                <Td className="tnum text-right text-[13px] text-gray-700">
+                  {plan.max_posts_per_month.toLocaleString()}
+                </Td>
+                <Td className="tnum text-right text-[13px] text-gray-700">
+                  {plan.ai_credits.toLocaleString()}
+                </Td>
+                <Td className="tnum text-right text-[13px] text-gray-700">
+                  {plan.max_workspaces.toLocaleString()}
+                </Td>
+                <Td className="tnum text-right text-[13px] text-gray-700">
+                  {plan.organizations_on_plan.toLocaleString()}
+                </Td>
+                <Td>
+                  {plan.is_active ? (
+                    <Badge tone="green">Active</Badge>
+                  ) : (
+                    <Badge tone="gray">Inactive</Badge>
+                  )}
+                </Td>
+                <Td className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(plan)}
+                      title="Edit plan"
+                      className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(plan)}
+                      title={plan.is_active ? "Deactivate plan" : "Reactivate plan"}
+                      className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
+                    >
+                      <Power size={15} />
+                    </button>
                   </div>
-                ))}
-                <div>
-                  <dt className="text-muted">Platforms</dt>
-                  <dd className="font-bold text-ink">{plan.allowed_platforms.length}</dd>
-                </div>
-              </dl>
-            </div>
-          ))}
-        </div>
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </TableShell>
       )}
 
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface p-6 shadow-xl">
-            <h2 className="text-base font-bold text-ink">
-              {editing ? `Edit plan "${editing.name}"` : "New plan"}
-            </h2>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <label className="text-xs font-semibold text-muted">
-                Slug
-                <input
-                  value={form.slug}
-                  disabled={!!editing}
-                  onChange={(e) => set("slug", e.target.value)}
-                  placeholder="growth"
-                  className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink disabled:opacity-60"
-                />
-              </label>
-              <label className="text-xs font-semibold text-muted">
-                Display name
-                <input
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="Pro"
-                  className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-                />
-              </label>
-              <label className="text-xs font-semibold text-muted">
-                Price (cents)
+        <Modal
+          title={editing ? `Edit plan "${editing.name}"` : "New plan"}
+          description="Changes apply immediately to all organizations on this plan."
+          onClose={closeDialog}
+          wide
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClassName()}>Slug</label>
+              <input
+                value={form.slug}
+                disabled={!!editing}
+                onChange={(e) => set("slug", e.target.value)}
+                placeholder="growth"
+                className={inputClassName("disabled:opacity-60")}
+              />
+            </div>
+            <div>
+              <label className={labelClassName()}>Display name</label>
+              <input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Pro"
+                className={inputClassName()}
+              />
+            </div>
+            <div>
+              <label className={labelClassName()}>Price (cents)</label>
+              <input
+                type="number"
+                min={0}
+                value={form.price_cents}
+                onChange={(e) => set("price_cents", parseInt(e.target.value || "0", 10))}
+                className={inputClassName()}
+              />
+            </div>
+            <div>
+              <label className={labelClassName()}>Currency</label>
+              <input
+                value={form.currency}
+                onChange={(e) => set("currency", e.target.value)}
+                className={inputClassName()}
+              />
+            </div>
+            {LIMIT_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className={labelClassName()}>{label}</label>
                 <input
                   type="number"
                   min={0}
-                  value={form.price_cents}
-                  onChange={(e) => set("price_cents", parseInt(e.target.value || "0", 10))}
-                  className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
+                  value={form[key] as number}
+                  onChange={(e) =>
+                    set(key, parseInt(e.target.value || "0", 10) as never)
+                  }
+                  className={inputClassName()}
                 />
-              </label>
-              <label className="text-xs font-semibold text-muted">
-                Currency
-                <input
-                  value={form.currency}
-                  onChange={(e) => set("currency", e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-                />
-              </label>
-              {LIMIT_FIELDS.map(({ key, label }) => (
-                <label key={key} className="text-xs font-semibold text-muted">
-                  {label}
-                  <input
-                    type="number"
-                    min={0}
-                    value={form[key] as number}
-                    onChange={(e) =>
-                      set(key, parseInt(e.target.value || "0", 10) as never)
-                    }
-                    className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-                  />
-                </label>
-              ))}
-              <label className="col-span-2 text-xs font-semibold text-muted">
+              </div>
+            ))}
+            <div className="col-span-2">
+              <label className={labelClassName()}>
                 Allowed platforms (comma separated)
-                <input
-                  value={platformsText}
-                  onChange={(e) => setPlatformsText(e.target.value)}
-                  placeholder="facebook, instagram, x, whatsapp"
-                  className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-                />
               </label>
-              <label className="col-span-2 text-xs font-semibold text-muted">
-                Paddle price ID (optional)
-                <input
-                  value={form.paddle_price_id || ""}
-                  onChange={(e) => set("paddle_price_id", e.target.value || null)}
-                  placeholder="pri_..."
-                  className="mt-1 w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-                />
-              </label>
+              <input
+                value={platformsText}
+                onChange={(e) => setPlatformsText(e.target.value)}
+                placeholder="facebook, instagram, x, whatsapp"
+                className={inputClassName()}
+              />
             </div>
-            <p className="mt-3 text-[11px] text-muted">
-              Feature flags are edited per plan via the API for now; limits and
-              pricing above cover the common changes.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeDialog}
-                className="rounded-lg px-4 py-2 text-xs font-semibold text-muted hover:text-ink"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={save}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-              >
-                {saving && <Loader2 size={13} className="animate-spin" />}
-                <span>{editing ? "Save changes" : "Create plan"}</span>
-              </button>
+            <div className="col-span-2">
+              <label className={labelClassName()}>
+                Paddle price ID (optional)
+              </label>
+              <input
+                value={form.paddle_price_id || ""}
+                onChange={(e) => set("paddle_price_id", e.target.value || null)}
+                placeholder="pri_..."
+                className={inputClassName()}
+              />
             </div>
           </div>
-        </div>
+          <p className="mt-3 text-xs text-gray-400">
+            Feature flags are edited per plan via the API for now; limits and
+            pricing above cover the common changes.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="ghost" onClick={closeDialog}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={save} disabled={saving}>
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              {editing ? "Save changes" : "Create plan"}
+            </Button>
+          </div>
+        </Modal>
       )}
     </div>
   );

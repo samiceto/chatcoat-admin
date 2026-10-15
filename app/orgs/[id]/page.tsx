@@ -3,9 +3,19 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Loader2, ShieldAlert, Trash2 } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "@/components/admin-error";
+import {
+  Badge,
+  Button,
+  Card,
+  CardTitle,
+  ErrorAlert,
+  LoadingRow,
+  PageHeader,
+  inputClassName,
+  labelClassName,
+} from "@/components/ui";
 
 type OrgDetail = {
   id: string;
@@ -54,15 +64,15 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
   const over = limit > 0 && used > limit;
   return (
     <div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold text-muted">{label}</span>
-        <span className={`font-bold ${over ? "text-rose-600 dark:text-rose-400" : "text-ink"}`}>
-          {used.toLocaleString()} / {limit > 0 ? limit.toLocaleString() : "∞"}
+      <div className="flex items-center justify-between text-[13px]">
+        <span className="font-medium text-gray-500">{label}</span>
+        <span className={`tnum font-semibold ${over ? "text-rose-600" : "text-gray-900"}`}>
+          {used.toLocaleString()} <span className="font-normal text-gray-400">/ {limit > 0 ? limit.toLocaleString() : "∞"}</span>
         </span>
       </div>
-      <div className="mt-1 h-1.5 rounded-full bg-[var(--inset)]">
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
         <div
-          className={`h-full rounded-full ${over ? "bg-rose-500" : "bg-teal-500"}`}
+          className={`h-full rounded-full transition-all ${over ? "bg-rose-500" : pct > 85 ? "bg-amber-500" : "bg-indigo-600"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -174,184 +184,176 @@ export default function AdminOrgDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-3 py-16 text-sm text-muted">
-        <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
-        <span>Loading organization...</span>
-      </div>
+      <Card>
+        <LoadingRow label="Loading organization…" />
+      </Card>
     );
   }
 
   if (!org) {
     return (
-      <div className="space-y-4">
-        <AdminError message={error || "Organization not found."} />
-        <Link href="/orgs" className="text-xs font-semibold text-brand hover:underline">
-          Back to organizations
+      <div>
+        <ErrorAlert message={error || "Organization not found."} />
+        <Link href="/orgs" className="text-[13px] font-semibold text-indigo-600 hover:underline">
+          ← Back to organizations
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div>
       <Link
         href="/orgs"
-        className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink"
+        className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-500 hover:text-gray-900"
       >
-        <ArrowLeft size={13} />
-        <span>Back to organizations</span>
+        <ArrowLeft size={14} />
+        Organizations
       </Link>
 
-      <AdminError message={error} />
-
-      <div className="rounded-2xl bg-surface shadow-card dark:border dark:border-white/[0.06] p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-ink">{org.name}</h2>
-            <p className="mt-0.5 text-xs text-muted">
-              {org.owner_email || "No owner email"} · {org.member_count} member
-              {org.member_count === 1 ? "" : "s"} ·{" "}
-              {org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}
-            </p>
-            <p className="mt-1 font-mono text-[10px] text-muted">{org.id}</p>
-          </div>
-          <button
-            type="button"
+      <PageHeader
+        title={org.name}
+        description={`${org.owner_email || "No owner email"} · ${org.member_count} member${org.member_count === 1 ? "" : "s"} · Created ${org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}`}
+        actions={
+          <Button
+            variant={org.is_suspended ? "primary" : "danger"}
             onClick={toggleSuspend}
             disabled={saving}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors disabled:opacity-60 ${
-              org.is_suspended
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                : "bg-rose-600 hover:bg-rose-700 text-white"
-            }`}
           >
-            <ShieldAlert size={13} />
-            <span>{org.is_suspended ? "Unsuspend workspace" : "Suspend workspace"}</span>
-          </button>
-        </div>
-        {org.is_suspended && (
-          <p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
-            This workspace is suspended — all API access is blocked.
-          </p>
+            <ShieldAlert size={14} />
+            {org.is_suspended ? "Unsuspend workspace" : "Suspend workspace"}
+          </Button>
+        }
+      />
+      <ErrorAlert message={error} />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {org.is_suspended ? (
+          <Badge tone="red">Suspended — API access blocked</Badge>
+        ) : (
+          <Badge tone="green">Active</Badge>
         )}
+        <Badge tone="indigo">{org.usage.plan_name}</Badge>
+        {org.plan_slug && <Badge tone="gray">Admin-assigned plan</Badge>}
+        <span className="font-mono text-[11px] text-gray-400">{org.id}</span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl bg-surface shadow-card dark:border dark:border-white/[0.06] p-5 space-y-4">
-          <h3 className="text-sm font-bold text-ink">Plan assignment</h3>
-          <div className="flex gap-2">
-            <select
-              value={planSlug}
-              onChange={(e) => setPlanSlug(e.target.value)}
-              disabled={saving}
-              className="flex-1 rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-            >
-              <option value="">Paddle subscription (default)</option>
-              {plans.map((p) => (
-                <option key={p.slug} value={p.slug}>
-                  {p.name} ({p.slug})
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={savePlan}
-              disabled={saving}
-              className="rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-            >
-              Save
-            </button>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardTitle>Plan & limits</CardTitle>
+          <div className="mt-4">
+            <label className={labelClassName()}>Assigned plan</label>
+            <div className="flex gap-2">
+              <select
+                value={planSlug}
+                onChange={(e) => setPlanSlug(e.target.value)}
+                disabled={saving}
+                className={inputClassName("flex-1")}
+              >
+                <option value="">Paddle subscription (default)</option>
+                {plans.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.name} ({p.slug})
+                  </option>
+                ))}
+              </select>
+              <Button variant="primary" onClick={savePlan} disabled={saving}>
+                Save
+              </Button>
+            </div>
+            <p className="mt-1.5 text-xs text-gray-400">
+              An admin-assigned plan overrides the Paddle subscription. Clear it
+              to fall back to billing-derived tiering.
+            </p>
           </div>
-          <p className="text-[11px] text-muted">
-            An admin-assigned plan overrides the Paddle subscription. Clear it to
-            fall back to billing-derived tiering.
-          </p>
 
-          <h3 className="text-sm font-bold text-ink pt-2">Limit overrides</h3>
-          <div className="flex gap-2">
-            <select
-              value={overrideMetric}
-              onChange={(e) => setOverrideMetric(e.target.value)}
-              disabled={saving}
-              className="rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-            >
-              {OVERRIDE_METRICS.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={0}
-              value={overrideValue}
-              onChange={(e) => setOverrideValue(e.target.value)}
-              placeholder="New limit"
-              disabled={saving}
-              className="w-28 rounded-lg border border-[var(--control-border)] bg-[var(--inset)] px-3 py-2 text-sm text-ink"
-            />
-            <button
-              type="button"
-              onClick={addOverride}
-              disabled={saving}
-              className="rounded-lg bg-[var(--inset)] px-3.5 py-2 text-xs font-semibold text-ink hover:opacity-80 disabled:opacity-60"
-            >
-              Set
-            </button>
-          </div>
-          {Object.keys(org.overrides).length > 0 ? (
-            <ul className="space-y-1.5">
-              {Object.entries(org.overrides).map(([metric, value]) => (
-                <li
-                  key={metric}
-                  className="flex items-center justify-between rounded-lg bg-[var(--inset)] px-3 py-1.5 text-xs"
-                >
-                  <span className="font-semibold text-ink">
-                    {OVERRIDE_METRICS.find((m) => m.key === metric)?.label || metric}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="font-bold text-teal-700 dark:text-teal-300">
-                      {value.toLocaleString()}
+          <div className="mt-6 border-t border-gray-100 pt-5">
+            <h3 className="text-sm font-semibold text-gray-900">Limit overrides</h3>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Per-organization limits take precedence over plan limits.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <select
+                value={overrideMetric}
+                onChange={(e) => setOverrideMetric(e.target.value)}
+                disabled={saving}
+                className={inputClassName()}
+              >
+                {OVERRIDE_METRICS.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={0}
+                value={overrideValue}
+                onChange={(e) => setOverrideValue(e.target.value)}
+                placeholder="Limit"
+                disabled={saving}
+                className={inputClassName("w-28")}
+              />
+              <Button onClick={addOverride} disabled={saving}>
+                Set
+              </Button>
+            </div>
+            {Object.keys(org.overrides).length > 0 ? (
+              <ul className="mt-3 space-y-1.5">
+                {Object.entries(org.overrides).map(([metric, value]) => (
+                  <li
+                    key={metric}
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-[13px] ring-1 ring-inset ring-gray-200"
+                  >
+                    <span className="font-medium text-gray-700">
+                      {OVERRIDE_METRICS.find((m) => m.key === metric)?.label || metric}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => removeOverride(metric)}
-                      title="Remove override"
-                      className="text-muted hover:text-rose-600"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[11px] text-muted">No per-org overrides. Plan limits apply.</p>
-          )}
-        </div>
-
-        <div className="rounded-2xl bg-surface shadow-card dark:border dark:border-white/[0.06] p-5 space-y-4">
-          <h3 className="text-sm font-bold text-ink">
-            Usage this month{" "}
-            <span className="ml-1 rounded-full bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:text-teal-300">
-              {org.usage.plan_name}
-            </span>
-          </h3>
-          <UsageBar used={org.usage.posts_used} limit={org.usage.posts_limit} label="Posts" />
-          <UsageBar
-            used={org.usage.ai_credits_used}
-            limit={org.usage.ai_credits_limit}
-            label="AI credits"
-          />
-          <UsageBar
-            used={org.usage.profiles_used}
-            limit={org.usage.profiles_limit}
-            label="Connected profiles"
-          />
-          <div className="pt-1 text-[11px] text-muted">
-            Effective limits include plan values plus any overrides above.
+                    <span className="flex items-center gap-2.5">
+                      <span className="tnum font-bold text-indigo-700">
+                        {value.toLocaleString()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeOverride(metric)}
+                        title="Remove override"
+                        className="text-gray-400 hover:text-rose-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-xs text-gray-400">
+                No overrides — plan limits apply.
+              </p>
+            )}
           </div>
-        </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <CardTitle>Usage this month</CardTitle>
+            <Badge tone="indigo">{org.usage.plan_name}</Badge>
+          </div>
+          <div className="mt-5 space-y-5">
+            <UsageBar used={org.usage.posts_used} limit={org.usage.posts_limit} label="Posts" />
+            <UsageBar
+              used={org.usage.ai_credits_used}
+              limit={org.usage.ai_credits_limit}
+              label="AI credits"
+            />
+            <UsageBar
+              used={org.usage.profiles_used}
+              limit={org.usage.profiles_limit}
+              label="Connected profiles"
+            />
+          </div>
+          <p className="mt-5 border-t border-gray-100 pt-4 text-xs text-gray-400">
+            Effective limits include plan values plus any overrides.
+          </p>
+        </Card>
       </div>
     </div>
   );

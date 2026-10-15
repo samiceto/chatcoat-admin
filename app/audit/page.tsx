@@ -1,9 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "@/components/admin-error";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorAlert,
+  LoadingRow,
+  PageHeader,
+  SearchInput,
+  TableShell,
+  Td,
+  Th,
+  Tr,
+} from "@/components/ui";
 
 type AuditItem = {
   id: string;
@@ -17,6 +29,17 @@ type AuditItem = {
 };
 
 const PAGE_SIZE = 100;
+
+function actionTone(action: string): "red" | "amber" | "blue" | "gray" {
+  const a = action.toLowerCase();
+  if (a.includes("suspend") || a.includes("delete") || a.includes("remove"))
+    return "red";
+  if (a.includes("bootstrap") || a.includes("create") || a.includes("invite"))
+    return "amber";
+  if (a.includes("plan") || a.includes("override") || a.includes("update"))
+    return "blue";
+  return "gray";
+}
 
 export default function AdminAuditPage() {
   const [items, setItems] = useState<AuditItem[]>([]);
@@ -59,125 +82,141 @@ export default function AdminAuditPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <form onSubmit={submitSearch} className="flex gap-2">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-3 text-muted" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by action, actor e-mail, or entity ID..."
-            className="w-full rounded-lg border border-[var(--control-border)] bg-[var(--inset)] py-2.5 pl-9 pr-3 text-sm text-ink placeholder-muted focus:border-teal-600 focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          className="rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white"
-        >
+    <div>
+      <PageHeader
+        title="Audit log"
+        description={`${total.toLocaleString()} recorded actions — every admin write is logged here.`}
+      />
+      <ErrorAlert message={error} />
+
+      <form onSubmit={submitSearch} className="mb-4 flex gap-2">
+        <SearchInput
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder="Search by action, actor e-mail, or entity ID…"
+          className="max-w-md flex-1"
+        />
+        <Button type="submit" variant="primary">
           Search
-        </button>
+        </Button>
+        {q && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setSearchInput("");
+              setQ("");
+              setOffset(0);
+            }}
+          >
+            Clear
+          </Button>
+        )}
       </form>
 
-      <AdminError message={error} />
-
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-16 text-sm text-muted">
-          <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
-          <span>Loading audit log...</span>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <LoadingRow label="Loading audit log…" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <EmptyState
+            title="No audit records"
+            description={
+              q
+                ? "Try a different search term."
+                : "Actions taken in the admin console will appear here."
+            }
+          />
         </div>
       ) : (
         <>
-          <p className="text-xs text-muted">{total.toLocaleString()} recorded actions</p>
-          <div className="overflow-x-auto rounded-2xl bg-surface shadow-card dark:border dark:border-white/[0.06]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--divider)] text-left text-xs text-muted">
-                  <th className="px-4 py-3 font-semibold">When</th>
-                  <th className="px-4 py-3 font-semibold">Actor</th>
-                  <th className="px-4 py-3 font-semibold">Action</th>
-                  <th className="px-4 py-3 font-semibold">Entity</th>
-                  <th className="px-4 py-3 font-semibold">Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b border-[var(--divider)] last:border-0 align-top"
-                  >
-                    <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
-                      {item.created_at
-                        ? new Date(item.created_at).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-xs font-semibold text-ink">
-                        {item.actor_email || "—"}
+          <TableShell>
+            <thead>
+              <tr>
+                <Th>When</Th>
+                <Th>Actor</Th>
+                <Th>Action</Th>
+                <Th>Entity</Th>
+                <Th>Details</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <Tr key={item.id} className="align-top">
+                  <Td className="whitespace-nowrap text-[13px] text-gray-500">
+                    {item.created_at
+                      ? new Date(item.created_at).toLocaleString()
+                      : "—"}
+                  </Td>
+                  <Td>
+                    <div className="text-[13px] font-semibold text-gray-900">
+                      {item.actor_email || "—"}
+                    </div>
+                    {item.actor_role && (
+                      <div className="text-[11px] text-gray-400">
+                        {item.actor_role.replace("_", " ")}
                       </div>
-                      {item.actor_role && (
-                        <div className="text-[10px] text-muted">
-                          {item.actor_role.replace("_", " ")}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-[var(--inset)] px-2 py-0.5 font-mono text-[11px] font-semibold text-ink">
-                        {item.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted">
-                      {item.entity_type && (
-                        <div className="font-semibold text-ink">{item.entity_type}</div>
-                      )}
-                      {item.entity_id && (
-                        <div className="font-mono text-[10px]">{item.entity_id.slice(0, 18)}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-[11px] text-muted">
+                    )}
+                  </Td>
+                  <Td>
+                    <Badge tone={actionTone(item.action)}>
+                      <span className="font-mono">{item.action}</span>
+                    </Badge>
+                  </Td>
+                  <Td className="text-[13px] text-gray-500">
+                    {item.entity_type && (
+                      <div className="font-medium text-gray-700">
+                        {item.entity_type}
+                      </div>
+                    )}
+                    {item.entity_id && (
+                      <div className="font-mono text-[11px] text-gray-400">
+                        {item.entity_id.slice(0, 18)}
+                      </div>
+                    )}
+                    {!item.entity_type && !item.entity_id && "—"}
+                  </Td>
+                  <Td className="text-[12px] text-gray-500">
+                    {item.details && Object.keys(item.details).length > 0 ? (
                       <details>
-                        <summary className="cursor-pointer hover:text-ink">
+                        <summary className="cursor-pointer font-medium hover:text-gray-900">
                           View changes
                         </summary>
-                        <pre className="mt-1 max-w-xs overflow-x-auto rounded-lg bg-[var(--inset)] p-2 font-mono text-[10px]">
+                        <pre className="mt-1.5 max-w-xs overflow-x-auto rounded-lg bg-gray-50 p-2.5 font-mono text-[11px] ring-1 ring-inset ring-gray-200">
                           {JSON.stringify(item.details, null, 1)}
                         </pre>
                       </details>
-                    </td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">
-                      No audit records yet. Actions taken in the admin dashboard will
-                      appear here.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </TableShell>
+
+          <div className="mt-4 flex items-center justify-between">
+            <Button
+              variant="secondary"
               disabled={offset === 0}
               onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
-              className="inline-flex items-center gap-1 rounded-lg bg-[var(--inset)] px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
             >
-              <ChevronLeft size={13} />
-              <span>Previous</span>
-            </button>
-            <span className="text-xs text-muted">
-              {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
+              <ChevronLeft size={14} />
+              Previous
+            </Button>
+            <span className="text-[13px] text-gray-500">
+              {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of{" "}
+              {total.toLocaleString()}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               disabled={offset + PAGE_SIZE >= total}
               onClick={() => setOffset((o) => o + PAGE_SIZE)}
-              className="inline-flex items-center gap-1 rounded-lg bg-[var(--inset)] px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
             >
-              <span>Next</span>
-              <ChevronRight size={13} />
-            </button>
+              Next
+              <ChevronRight size={14} />
+            </Button>
           </div>
         </>
       )}
