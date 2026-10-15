@@ -37,6 +37,7 @@ const ICONS: Record<string, typeof Bot> = {
   "llm.copilot_model": Bot,
   "llm.autopilot_model": MessageSquareText,
   "llm.suggestion_model": Sparkles,
+  "llm.whatsapp_copilot_model": MessageSquareText,
 };
 
 const SOURCE_TONE: Record<string, "blue" | "amber" | "gray"> = {
