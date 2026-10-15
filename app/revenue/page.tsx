@@ -128,19 +128,19 @@ export default function AdminRevenuePage() {
             <Stat
               label="MRR"
               value={summary ? money(summary.mrr_cents) : "—"}
-              sub={`${summary?.active_subscriptions || 0} paying subscriptions`}
+              delta={`${summary?.active_subscriptions || 0} paying subscriptions`}
             />
             <Stat
               label="ARR (MRR × 12)"
               value={summary ? money(summary.mrr_cents * 12) : "—"}
-              sub="Annualized run-rate"
+              delta="Annualized run-rate"
             />
             <Stat
               label="Subscriptions"
               value={String(
                 Object.values(summary?.status_counts || {}).reduce((a, b) => a + b, 0)
               )}
-              sub={Object.entries(summary?.status_counts || {})
+              delta={Object.entries(summary?.status_counts || {})
                 .map(([s, c]) => `${c} ${s}`)
                 .join(" · ")}
             />
