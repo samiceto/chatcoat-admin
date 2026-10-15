@@ -23,6 +23,10 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
+  // Definitive build-time check: is the Clerk key actually in this bundle?
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const clerkKeyPresent = !!clerkKey;
+  const clerkKeyPrefix = clerkKey ? clerkKey.slice(0, 12) : "";
   const [me, setMe] = useState<StaffMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -136,12 +140,24 @@ function AdminGate({ children }: { children: React.ReactNode }) {
             {slowLoad && (
               <div className="mt-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 p-4 text-xs text-amber-800 dark:text-amber-300">
                 {!authLoaded ? (
-                  <p>
-                    Still waiting on the sign-in service.{" "}
-                    <code className="font-semibold">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>{" "}
-                    may be missing or invalid — check Vercel → Settings →
-                    Environment Variables, then redeploy.
-                  </p>
+                  clerkKeyPresent ? (
+                    <p>
+                      The Clerk key is in this build (<code className="font-semibold">{clerkKeyPrefix}…</code>),
+                      but Clerk's servers aren't responding. Something on your
+                      network or browser is likely blocking them — try an
+                      incognito window with extensions/ad-blocker off, or another
+                      network.
+                    </p>
+                  ) : (
+                    <p>
+                      This build contains <b>no</b> Clerk publishable key, so
+                      sign-in can never load. Set{" "}
+                      <code className="font-semibold">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>{" "}
+                      in Vercel → Settings → Environment Variables, then{" "}
+                      <b>redeploy</b> (the key is baked in at build time — saving
+                      the variable alone changes nothing).
+                    </p>
+                  )
                 ) : (
                   <p>
                     The API is taking unusually long to respond. It may be waking
