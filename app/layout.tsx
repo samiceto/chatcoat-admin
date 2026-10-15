@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { ClerkTokenBridge } from "@/components/clerk-token-bridge";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getAdminApiKey, setAdminApiKey } from "@/lib/api";
 import "./globals.css";
 
 type StaffMe = { email: string; role: string };
@@ -64,15 +64,26 @@ function AdminGate({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   };
 
+  const usingApiKey = !!getAdminApiKey();
+
   useEffect(() => {
     if (isPublicRoute) {
       setLoading(false);
       return;
     }
+    if (usingApiKey) {
+      checkAccess(); // API key bypass: no Clerk needed
+      return;
+    }
     if (!authLoaded) return; // wait for Clerk before calling the API
     checkAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPublicRoute, pathname, authLoaded]);
+  }, [isPublicRoute, pathname, authLoaded, usingApiKey]);
+
+  const signOutKey = () => {
+    setAdminApiKey(null);
+    window.location.href = "/sign-in";
+  };
 
   // If loading drags on, say what is stuck instead of spinning forever.
   useEffect(() => {
@@ -124,8 +135,24 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                 {me.role.replace("_", " ")}
               </span>
             )}
+            {usingApiKey && me && (
+              <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                API key
+              </span>
+            )}
           </div>
-          {me && <span className="text-xs text-muted">{me.email}</span>}
+          <div className="flex items-center gap-3">
+            {me && <span className="text-xs text-muted">{me.email}</span>}
+            {usingApiKey && (
+              <button
+                type="button"
+                onClick={signOutKey}
+                className="text-xs font-semibold text-muted hover:text-ink"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
         </div>
         {me && (
           <nav className="mx-auto max-w-6xl px-4 pb-3 flex flex-wrap gap-1.5">
@@ -153,7 +180,7 @@ function AdminGate({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {loading || !authLoaded ? (
+        {loading || (!authLoaded && !usingApiKey) ? (
           <div className="mx-auto max-w-md py-24 text-center">
             <div className="flex items-center justify-center gap-3 text-sm text-muted">
               <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
@@ -216,7 +243,23 @@ function AdminGate({ children }: { children: React.ReactNode }) {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <ShieldAlert size={22} />
             </div>
-            {!isSignedIn ? (
+            {usingApiKey ? (
+              <>
+                <h1 className="mt-4 text-lg font-bold text-ink">Invalid API key</h1>
+                <p className="mt-2 text-sm text-muted">
+                  The saved admin API key was rejected. Clear it and try again,
+                  or check the <code className="font-semibold">ADMIN_API_KEY</code> value
+                  in your API's Render environment.
+                </p>
+                <button
+                  type="button"
+                  onClick={signOutKey}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Clear key and sign in again
+                </button>
+              </>
+            ) : !isSignedIn ? (
               <>
                 <h1 className="mt-4 text-lg font-bold text-ink">Sign in required</h1>
                 <p className="mt-2 text-sm text-muted">

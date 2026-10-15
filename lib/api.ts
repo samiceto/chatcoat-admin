@@ -42,7 +42,23 @@ export function setAuthTokenGetter(
   authTokenGetter = getter;
 }
 
+const ADMIN_KEY_STORAGE = "chatcoat_admin_key";
+
+export function getAdminApiKey(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(ADMIN_KEY_STORAGE);
+}
+
+export function setAdminApiKey(key: string | null): void {
+  if (typeof window === "undefined") return;
+  if (key) window.localStorage.setItem(ADMIN_KEY_STORAGE, key);
+  else window.localStorage.removeItem(ADMIN_KEY_STORAGE);
+}
+
 export async function getAuthHeaders(): Promise<Record<string, string>> {
+  // Admin API key bypasses Clerk entirely (for networks where Clerk is unreachable).
+  const apiKey = getAdminApiKey();
+  if (apiKey) return { "X-Admin-Key": apiKey };
   if (typeof window === "undefined" || !authTokenGetter) return {};
   try {
     const token = await authTokenGetter();
