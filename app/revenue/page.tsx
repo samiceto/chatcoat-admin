@@ -51,7 +51,7 @@ function money(cents: number, currency = "USD"): string {
   });
 }
 
-const STATUS_TONE: Record<string, "green" | "amber" | "gray" | "rose" | "blue"> = {
+const STATUS_TONE: Record<string, "green" | "amber" | "gray" | "red" | "blue"> = {
   active: "green",
   trialing: "blue",
   past_due: "amber",
