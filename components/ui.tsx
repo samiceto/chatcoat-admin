@@ -251,12 +251,20 @@ export function Th({
 export function Td({
   children,
   className,
+  colSpan,
+  rowSpan,
 }: {
   children: ReactNode;
   className?: string;
+  colSpan?: number;
+  rowSpan?: number;
 }) {
   return (
-    <td className={cn("border-b border-gray-100 px-4 py-3 align-middle", className)}>
+    <td
+      colSpan={colSpan}
+      rowSpan={rowSpan}
+      className={cn("border-b border-gray-100 px-4 py-3 align-middle", className)}
+    >
       {children}
     </td>
   );
