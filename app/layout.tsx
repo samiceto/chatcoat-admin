@@ -24,16 +24,15 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<StaffMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimMsg, setClaimMsg] = useState<string | null>(null);
 
   // The sign-in page must stay reachable without staff access.
   const isPublicRoute = pathname?.startsWith("/sign-in");
 
-  useEffect(() => {
-    if (isPublicRoute) {
-      setLoading(false);
-      return;
-    }
+  const checkAccess = () => {
     setLoading(true);
+    setClaimMsg(null);
     apiFetch<StaffMe>("/api/admin/me")
       .then((data) => {
         setMe(data);
@@ -44,7 +43,31 @@ function AdminGate({ children }: { children: React.ReactNode }) {
         setDenied(true);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (isPublicRoute) {
+      setLoading(false);
+      return;
+    }
+    checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPublicRoute, pathname]);
+
+  const claimAdmin = async () => {
+    setClaiming(true);
+    setClaimMsg(null);
+    try {
+      await apiFetch("/api/admin/bootstrap", { method: "POST" });
+      checkAccess();
+    } catch (err) {
+      setClaimMsg(
+        err instanceof Error ? err.message : "Could not claim admin access."
+      );
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   if (isPublicRoute) return <>{children}</>;
 
@@ -102,15 +125,32 @@ function AdminGate({ children }: { children: React.ReactNode }) {
             </div>
             <h1 className="mt-4 text-lg font-bold text-ink">Admin access required</h1>
             <p className="mt-2 text-sm text-muted">
-              Your account is not a staff member. If you should have access, ask a
-              super admin to invite you.
+              Your account is not a staff member. If this is a fresh setup, claim
+              the first super_admin access below — the bootstrap closes permanently
+              after the first claim.
             </p>
-            <Link
-              href="/sign-in"
-              className="mt-4 inline-block text-xs font-semibold text-brand hover:underline"
-            >
-              Go to sign in
-            </Link>
+            {claimMsg && (
+              <p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                {claimMsg}
+              </p>
+            )}
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={claimAdmin}
+                disabled={claiming}
+                className="inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {claiming && <Loader2 size={13} className="animate-spin" />}
+                <span>Claim admin access</span>
+              </button>
+              <Link
+                href="/sign-in"
+                className="text-xs font-semibold text-brand hover:underline"
+              >
+                Go to sign in
+              </Link>
+            </div>
           </div>
         ) : (
           children
