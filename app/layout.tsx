@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2, ShieldAlert } from "lucide-react";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { ClerkTokenBridge } from "@/components/clerk-token-bridge";
 import { apiFetch } from "@/lib/api";
 import "./globals.css";
@@ -21,6 +21,8 @@ const NAV = [
 
 function AdminGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const [me, setMe] = useState<StaffMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -50,9 +52,10 @@ function AdminGate({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    if (!authLoaded) return; // wait for Clerk before calling the API
     checkAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPublicRoute, pathname]);
+  }, [isPublicRoute, pathname, authLoaded]);
 
   const claimAdmin = async () => {
     setClaiming(true);
@@ -113,7 +116,7 @@ function AdminGate({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {loading ? (
+        {loading || !authLoaded ? (
           <div className="flex items-center justify-center gap-3 py-24 text-sm text-muted">
             <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
             <span>Checking admin access...</span>
@@ -123,34 +126,46 @@ function AdminGate({ children }: { children: React.ReactNode }) {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <ShieldAlert size={22} />
             </div>
-            <h1 className="mt-4 text-lg font-bold text-ink">Admin access required</h1>
-            <p className="mt-2 text-sm text-muted">
-              Your account is not a staff member. If this is a fresh setup, claim
-              the first super_admin access below — the bootstrap closes permanently
-              after the first claim.
-            </p>
-            {claimMsg && (
-              <p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                {claimMsg}
-              </p>
+            {!isSignedIn ? (
+              <>
+                <h1 className="mt-4 text-lg font-bold text-ink">Sign in required</h1>
+                <p className="mt-2 text-sm text-muted">
+                  Sign in with your ChatCoat account to access the admin dashboard.
+                </p>
+                <Link
+                  href="/sign-in"
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Sign in
+                </Link>
+              </>
+            ) : (
+              <>
+                <h1 className="mt-4 text-lg font-bold text-ink">Admin access required</h1>
+                <p className="mt-2 text-sm text-muted">
+                  Signed in as {user?.primaryEmailAddress?.emailAddress ?? "your account"},
+                  which is not a staff member. If this is a fresh setup, claim the first super_admin
+                  access below — the bootstrap closes permanently after the first
+                  claim.
+                </p>
+                {claimMsg && (
+                  <p className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                    {claimMsg}
+                  </p>
+                )}
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={claimAdmin}
+                    disabled={claiming}
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                  >
+                    {claiming && <Loader2 size={13} className="animate-spin" />}
+                    <span>Claim admin access</span>
+                  </button>
+                </div>
+              </>
             )}
-            <div className="mt-4 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={claimAdmin}
-                disabled={claiming}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-              >
-                {claiming && <Loader2 size={13} className="animate-spin" />}
-                <span>Claim admin access</span>
-              </button>
-              <Link
-                href="/sign-in"
-                className="text-xs font-semibold text-brand hover:underline"
-              >
-                Go to sign in
-              </Link>
-            </div>
           </div>
         ) : (
           children
