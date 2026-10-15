@@ -46,9 +46,18 @@ const SOURCE_TONE: Record<string, "blue" | "amber" | "gray"> = {
   default: "gray",
 };
 
+type GeneralSetting = {
+  key: string;
+  label: string;
+  description: string;
+  value: string | null;
+};
+
 export default function AiModelsPage() {
   const [models, setModels] = useState<ModelSetting[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [assistantNumber, setAssistantNumber] = useState("");
+  const [assistantNumberSaved, setAssistantNumberSaved] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +83,17 @@ export default function AiModelsPage() {
         )
       )
       .finally(() => setLoading(false));
+    apiFetch<{ settings: GeneralSetting[] }>("/api/admin/settings/general", {
+      forceFresh: true,
+    })
+      .then((data) => {
+        const s = (data.settings || []).find(
+          (x) => x.key === "whatsapp.assistant_phone_number_id"
+        );
+        setAssistantNumber(s?.value || "");
+        setAssistantNumberSaved(s?.value || null);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -194,6 +214,61 @@ export default function AiModelsPage() {
           })}
         </div>
       )}
+
+      <Card className="mt-4">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+            <MessageSquareText size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[14px] font-semibold text-gray-900">
+              Assistant WhatsApp number
+            </h3>
+            <p className="mt-0.5 text-[13px] text-gray-500">
+              Phone number ID of the ChatCoat assistant's own WhatsApp number.
+              Messages to this number are routed to the owner copilot. Find it in
+              WhatsApp Manager by clicking the phone number.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <input
+                value={assistantNumber}
+                onChange={(e) => setAssistantNumber(e.target.value)}
+                placeholder="e.g. 123456789012345"
+                className={inputClassName()}
+              />
+              <Button
+                variant="secondary"
+                disabled={saving || assistantNumber.trim() === (assistantNumberSaved || "")}
+                onClick={async () => {
+                  setSaving(true);
+                  setError(null);
+                  try {
+                    await apiFetch("/api/admin/settings/general", {
+                      method: "PUT",
+                      body: JSON.stringify({
+                        settings: {
+                          "whatsapp.assistant_phone_number_id":
+                            assistantNumber.trim() || null,
+                        },
+                      }),
+                    });
+                    setAssistantNumberSaved(assistantNumber.trim() || null);
+                    setSaved(true);
+                  } catch (err) {
+                    setError(
+                      err instanceof Error ? err.message : "Couldn't save number."
+                    );
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card className="mt-4">
         <h3 className="text-[13px] font-semibold text-gray-900">How precedence works</h3>
