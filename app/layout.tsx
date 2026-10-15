@@ -12,6 +12,7 @@ import {
   Loader2,
   LogOut,
   ScrollText,
+  Sparkles,
   ShieldAlert,
   ShieldCheck,
   UserRound,
@@ -42,7 +43,10 @@ const NAV = [
   },
   {
     section: "System",
-    items: [{ href: "/audit", label: "Audit log", icon: ScrollText }],
+    items: [
+      { href: "/ai-models", label: "AI Models", icon: Sparkles },
+      { href: "/audit", label: "Audit log", icon: ScrollText },
+    ],
   },
 ];
 
@@ -53,6 +57,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/plans": "Plans",
   "/revenue": "Revenue",
   "/staff": "Staff",
+  "/ai-models": "AI Models",
   "/audit": "Audit log",
 };
 
