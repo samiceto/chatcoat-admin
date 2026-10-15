@@ -20,7 +20,11 @@ export function getApiUrl(): string {
       }
     }
   }
-  if (envUrl) return envUrl.replace(/\/+$/, "");
+  if (envUrl) {
+    const cleaned = envUrl.replace(/\/+$/, "");
+    // Tolerate a bare hostname like "api.chatcoat.com".
+    return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
+  }
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
