@@ -365,3 +365,41 @@ export function Modal({
     </div>
   );
 }
+
+export function Pagination({
+  page,
+  totalPages,
+  onChange,
+  pageSize,
+  total,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+  pageSize?: number;
+  total?: number;
+}) {
+  return (
+    <div className="mt-4 flex items-center justify-between">
+      <Button
+        variant="secondary"
+        disabled={page <= 1}
+        onClick={() => onChange(Math.max(1, page - 1))}
+      >
+        Previous
+      </Button>
+      <span className="text-[13px] text-gray-500">
+        {total !== undefined && pageSize !== undefined
+          ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total.toLocaleString()}`
+          : `Page ${page} of ${totalPages}`}
+      </span>
+      <Button
+        variant="secondary"
+        disabled={page >= totalPages}
+        onClick={() => onChange(Math.min(totalPages, page + 1))}
+      >
+        Next
+      </Button>
+    </div>
+  );
+}

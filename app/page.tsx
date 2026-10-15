@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
+  Banknote,
   Building2,
   CreditCard,
   Hourglass,
@@ -65,6 +66,7 @@ export default function AdminOverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
   const [activity, setActivity] = useState<AuditItem[]>([]);
+  const [mrrCents, setMrrCents] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,11 +75,13 @@ export default function AdminOverviewPage() {
       apiFetch<Stats>("/api/admin/stats"),
       apiFetch<{ items: OrgItem[] }>("/api/admin/orgs?limit=5&offset=0"),
       apiFetch<{ items: AuditItem[] }>("/api/admin/audit-log?limit=8&offset=0"),
+      apiFetch<{ mrr_cents: number }>("/api/admin/revenue").catch(() => null),
     ])
-      .then(([s, o, a]) => {
+      .then(([s, o, a, r]) => {
         setStats(s);
         setOrgs(o.items || []);
         setActivity(a.items || []);
+        setMrrCents(r ? r.mrr_cents : null);
         setError(null);
       })
       .catch((err) =>
@@ -141,6 +145,19 @@ export default function AdminOverviewPage() {
           label="Staff members"
           value={(stats?.staff ?? 0).toLocaleString()}
           icon={<UserCog size={16} />}
+        />
+        <Stat
+          label="MRR"
+          value={
+            mrrCents === null
+              ? "—"
+              : (mrrCents / 100).toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  maximumFractionDigits: 0,
+                })
+          }
+          icon={<Banknote size={16} />}
         />
       </div>
 

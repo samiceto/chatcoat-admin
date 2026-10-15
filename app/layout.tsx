@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Building2,
+  Banknote,
+  Building2,
   CreditCard,
   KeyRound,
   LayoutDashboard,
@@ -13,6 +15,7 @@ import {
   ScrollText,
   ShieldAlert,
   ShieldCheck,
+  UserRound,
   Users,
 } from "lucide-react";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
@@ -29,7 +32,9 @@ const NAV = [
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/orgs", label: "Organizations", icon: Building2 },
+      { href: "/users", label: "Users", icon: UserRound },
       { href: "/plans", label: "Plans", icon: CreditCard },
+      { href: "/revenue", label: "Revenue", icon: Banknote },
     ],
   },
   {
@@ -45,7 +50,9 @@ const NAV = [
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
   "/orgs": "Organizations",
+  "/users": "Users",
   "/plans": "Plans",
+  "/revenue": "Revenue",
   "/staff": "Staff",
   "/audit": "Audit log",
 };
