@@ -64,10 +64,24 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     ...((fetchOptions.headers || {}) as Record<string, string>),
   };
   const cleanPath = `/${path.replace(/^\/+/, "")}`;
-  const response = await fetch(`${getApiUrl()}${cleanPath}`, {
-    ...fetchOptions,
-    headers,
-  });
+  // Never spin forever: the Render free tier can hang on cold start.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  let response: Response;
+  try {
+    response = await fetch(`${getApiUrl()}${cleanPath}`, {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("The API did not respond in time. It may be waking up — please retry.");
+    }
+    throw err;
+  }
+  clearTimeout(timeout);
   if (!response.ok) {
     const text = await response.text();
     let detail = text;

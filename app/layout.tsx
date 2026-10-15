@@ -28,6 +28,7 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const [denied, setDenied] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [claimMsg, setClaimMsg] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
 
   // The sign-in page must stay reachable without staff access.
   const isPublicRoute = pathname?.startsWith("/sign-in");
@@ -56,6 +57,16 @@ function AdminGate({ children }: { children: React.ReactNode }) {
     checkAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPublicRoute, pathname, authLoaded]);
+
+  // If loading drags on, say what is stuck instead of spinning forever.
+  useEffect(() => {
+    if (!loading && authLoaded) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 12000);
+    return () => clearTimeout(t);
+  }, [loading, authLoaded]);
 
   const claimAdmin = async () => {
     setClaiming(true);
@@ -117,9 +128,35 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         {loading || !authLoaded ? (
-          <div className="flex items-center justify-center gap-3 py-24 text-sm text-muted">
-            <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
-            <span>Checking admin access...</span>
+          <div className="mx-auto max-w-md py-24 text-center">
+            <div className="flex items-center justify-center gap-3 text-sm text-muted">
+              <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
+              <span>Checking admin access...</span>
+            </div>
+            {slowLoad && (
+              <div className="mt-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 p-4 text-xs text-amber-800 dark:text-amber-300">
+                {!authLoaded ? (
+                  <p>
+                    Still waiting on the sign-in service.{" "}
+                    <code className="font-semibold">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>{" "}
+                    may be missing or invalid — check Vercel → Settings →
+                    Environment Variables, then redeploy.
+                  </p>
+                ) : (
+                  <p>
+                    The API is taking unusually long to respond. It may be waking
+                    up from sleep — give it a moment and retry.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-2 font-semibold text-brand hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         ) : denied || !me ? (
           <div className="mx-auto max-w-md py-24 text-center">
