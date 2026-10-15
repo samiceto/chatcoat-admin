@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Building2, CreditCard, Hourglass, ShieldCheck, Users, UserCog } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "./layout";
+import { AdminError } from "@/components/admin-error";
 
 type Stats = {
   organizations: number;

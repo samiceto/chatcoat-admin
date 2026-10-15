@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "../layout";
+import { AdminError } from "@/components/admin-error";
 
 type AuditItem = {
   id: string;

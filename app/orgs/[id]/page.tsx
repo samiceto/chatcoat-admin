@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Loader2, ShieldAlert, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "../../layout";
+import { AdminError } from "@/components/admin-error";
 
 type OrgDetail = {
   id: string;

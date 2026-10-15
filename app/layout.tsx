@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
+import { Loader2, ShieldAlert } from "lucide-react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ClerkTokenBridge } from "@/components/clerk-token-bridge";
 import { apiFetch } from "@/lib/api";
@@ -18,16 +18,6 @@ const NAV = [
   { href: "/staff", label: "Staff" },
   { href: "/audit", label: "Audit log" },
 ];
-
-export function AdminError({ message }: { message: string | null }) {
-  if (!message) return null;
-  return (
-    <div className="rounded-xl bg-rose-50 dark:bg-rose-950/40 p-4 text-sm text-rose-800 dark:text-rose-300 flex items-center gap-2">
-      <AlertTriangle size={16} />
-      <span>{message}</span>
-    </div>
-  );
-}
 
 function AdminGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

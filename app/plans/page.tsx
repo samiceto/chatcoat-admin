@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, Power } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "../layout";
+import { AdminError } from "@/components/admin-error";
 
 type Plan = {
   slug: string;

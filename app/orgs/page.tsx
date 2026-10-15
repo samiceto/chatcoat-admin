@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Search, ShieldAlert } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { AdminError } from "../layout";
+import { AdminError } from "@/components/admin-error";
 
 type OrgItem = {
   id: string;
