@@ -27,6 +27,18 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const clerkKeyPresent = !!clerkKey;
   const clerkKeyPrefix = clerkKey ? clerkKey.slice(0, 12) : "";
+  // Decode the Clerk frontend API host from the publishable key.
+  const clerkHost = (() => {
+    try {
+      if (!clerkKey) return null;
+      const b64 = clerkKey.replace(/^pk_(live|test)_/, "").replace(/-/g, "+").replace(/_/g, "/");
+      const host = atob(b64).replace(/\$$/, "");
+      return host.includes(".") ? host : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [netCheck, setNetCheck] = useState<"pending" | "ok" | "failed" | null>(null);
   const [me, setMe] = useState<StaffMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -71,6 +83,16 @@ function AdminGate({ children }: { children: React.ReactNode }) {
     const t = setTimeout(() => setSlowLoad(true), 12000);
     return () => clearTimeout(t);
   }, [loading, authLoaded]);
+
+  // Once we're sure Clerk is stuck, probe its servers directly from this browser.
+  // A failed fetch = network/DNS block; a successful one = Clerk init problem.
+  useEffect(() => {
+    if (authLoaded || !slowLoad || netCheck !== null || !clerkHost) return;
+    setNetCheck("pending");
+    fetch(`https://${clerkHost}/v1/environment`, { mode: "no-cors" })
+      .then(() => setNetCheck("ok"))
+      .catch(() => setNetCheck("failed"));
+  }, [authLoaded, slowLoad, netCheck, clerkHost]);
 
   const claimAdmin = async () => {
     setClaiming(true);
@@ -143,10 +165,25 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                   clerkKeyPresent ? (
                     <p>
                       The Clerk key is in this build (<code className="font-semibold">{clerkKeyPrefix}…</code>),
-                      but Clerk's servers aren't responding. Something on your
-                      network or browser is likely blocking them — try an
-                      incognito window with extensions/ad-blocker off, or another
-                      network.
+                      but sign-in isn't initializing.{" "}
+                      {netCheck === "failed" && clerkHost && (
+                        <>
+                          Your browser cannot reach <code className="font-semibold">{clerkHost}</code> at
+                          all — something on this device or connection is blocking
+                          it (VPN, firewall, antivirus web shield, or DNS). Try a
+                          different device, or set your DNS to 8.8.8.8.
+                        </>
+                      )}
+                      {netCheck === "ok" && (
+                        <>
+                          Your browser <b>can</b> reach Clerk's servers, so the
+                          stall is in sign-in initialization itself — try a
+                          completely different browser.
+                        </>
+                      )}
+                      {netCheck !== "failed" && netCheck !== "ok" && (
+                        <>Running a connection check…</>
+                      )}
                     </p>
                   ) : (
                     <p>
