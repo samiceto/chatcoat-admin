@@ -39,6 +39,10 @@ function AdminGate({ children }: { children: React.ReactNode }) {
     }
   })();
   const [netCheck, setNetCheck] = useState<"pending" | "ok" | "failed" | null>(null);
+  const [showKeyForm, setShowKeyForm] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [verifyingKey, setVerifyingKey] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
   const [me, setMe] = useState<StaffMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -83,6 +87,24 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const signOutKey = () => {
     setAdminApiKey(null);
     window.location.href = "/sign-in";
+  };
+
+  const submitKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const key = keyInput.trim();
+    if (!key) return;
+    setVerifyingKey(true);
+    setKeyError(null);
+    try {
+      setAdminApiKey(key);
+      await apiFetch("/api/admin/me"); // verify before proceeding
+      checkAccess();
+    } catch (err) {
+      setAdminApiKey(null);
+      setKeyError(err instanceof Error ? err.message : "Invalid key.");
+    } finally {
+      setVerifyingKey(false);
+    }
   };
 
   // If loading drags on, say what is stuck instead of spinning forever.
@@ -228,13 +250,48 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                     up from sleep — give it a moment and retry.
                   </p>
                 )}
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="mt-2 font-semibold text-brand hover:underline"
-                >
-                  Retry
-                </button>
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="font-semibold text-brand hover:underline"
+                  >
+                    Retry
+                  </button>
+                  <span className="text-amber-700/60 dark:text-amber-200/40">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyForm((v) => !v)}
+                    className="font-semibold text-brand hover:underline"
+                  >
+                    {showKeyForm ? "Hide API key form" : "Use admin API key instead"}
+                  </button>
+                </div>
+                {showKeyForm && (
+                  <form onSubmit={submitKey} className="mt-3 text-left">
+                    <input
+                      type="password"
+                      value={keyInput}
+                      onChange={(e) => setKeyInput(e.target.value)}
+                      placeholder="Paste ADMIN_API_KEY from Render"
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-black/20 px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-brand/40"
+                    />
+                    {keyError && (
+                      <p className="mt-1.5 font-semibold text-rose-600 dark:text-rose-400">
+                        {keyError}
+                      </p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={verifyingKey || !keyInput.trim()}
+                      className="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                    >
+                      {verifyingKey && <Loader2 size={13} className="animate-spin" />}
+                      <span>Sign in with key</span>
+                    </button>
+                  </form>
+                )}
               </div>
             )}
           </div>
