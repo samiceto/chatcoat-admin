@@ -204,7 +204,7 @@ export default function AiModelsPage() {
                     {m.key === "llm.autopilot_model" && (
                       <p className="mt-2 text-[12px] text-gray-400">
                         Businesses can still override this per-workspace in the product's
-                        Autopilot page — that override wins over this global value.
+                        Customer Agent page — that override wins over this global value.
                       </p>
                     )}
                   </div>
@@ -226,7 +226,7 @@ export default function AiModelsPage() {
             </h3>
             <p className="mt-0.5 text-[13px] text-gray-500">
               Phone number ID of the ChatCoat assistant's own WhatsApp number.
-              Messages to this number are routed to the owner copilot. Find it in
+              Messages to this number are routed to the WhatsApp Owner Agent. Find it in
               WhatsApp Manager by clicking the phone number.
             </p>
             <div className="mt-3 flex gap-2">
