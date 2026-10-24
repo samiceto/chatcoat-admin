@@ -144,11 +144,11 @@ function AdminGate({ children }: { children: React.ReactNode }) {
     setVerifyingKey(true);
     setKeyError(null);
     try {
-      setAdminApiKey(key);
+      await setAdminApiKey(key);
       await apiFetch("/api/admin/me"); // verify before proceeding
       checkAccess();
     } catch (err) {
-      setAdminApiKey(null);
+      await setAdminApiKey(null);
       setKeyError(err instanceof Error ? err.message : "Invalid key.");
     } finally {
       setVerifyingKey(false);

@@ -21,12 +21,12 @@ export default function SignInPage() {
     setVerifying(true);
     setKeyError(null);
     try {
-      setAdminApiKey(key);
-      // Verify the key before leaving the page.
+      await setAdminApiKey(key);
+      // Verify the key session before leaving the page.
       await apiFetch("/api/admin/me");
       router.push("/");
     } catch (err) {
-      setAdminApiKey(null);
+      await setAdminApiKey(null);
       setKeyError(err instanceof Error ? err.message : "Invalid key.");
     } finally {
       setVerifying(false);

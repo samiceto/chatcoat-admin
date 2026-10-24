@@ -43,33 +43,56 @@ export function setAuthTokenGetter(
 }
 
 const ADMIN_KEY_STORAGE = "chatcoat_admin_key";
+const ADMIN_SESSION_FLAG = "chatcoat_admin_session";
 
+// The raw admin API key is NEVER stored in the browser. Sign-in exchanges
+// it once with the API, which sets a short-lived httpOnly session cookie;
+// a sessionStorage flag (not the key, not the token) is all the client
+// keeps so it knows the key session is active.
 export function getAdminApiKey(): string | null {
   if (typeof window === "undefined") return null;
-  // Mitigation only: the admin key was persisted in localStorage, so it
-  // survived browser restarts and was readable by any script on the
-  // admin origin. sessionStorage at least clears it when the tab closes.
-  // The full fix is Clerk-only admin auth (or an httpOnly cookie) plus
-  // key rotation — that is still owed and is not claimed here.
-  return window.sessionStorage.getItem(ADMIN_KEY_STORAGE);
+  try {
+    return window.sessionStorage.getItem(ADMIN_SESSION_FLAG);
+  } catch {
+    return null;
+  }
 }
 
-export function setAdminApiKey(key: string | null): void {
+export async function setAdminApiKey(key: string | null): Promise<void> {
   if (typeof window === "undefined") return;
-  if (key) window.sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
-  else window.sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-  // Clear any key left in localStorage by the old behaviour.
+  // Always scrub any raw key left by the old storage behaviour.
   try {
+    window.sessionStorage.removeItem(ADMIN_KEY_STORAGE);
     window.localStorage.removeItem(ADMIN_KEY_STORAGE);
   } catch {
-    // localStorage unavailable: sessionStorage key is still used.
+    // storage unavailable: nothing to scrub
+  }
+  if (key) {
+    const res = await fetch(`${getApiUrl()}/api/admin/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ key }),
+    });
+    if (!res.ok) throw new Error("Invalid admin API key.");
+    window.sessionStorage.setItem(ADMIN_SESSION_FLAG, "cookie");
+  } else {
+    window.sessionStorage.removeItem(ADMIN_SESSION_FLAG);
+    try {
+      await fetch(`${getApiUrl()}/api/admin/session`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+    } catch {
+      // best effort: the cookie expires on its own within 12h
+    }
   }
 }
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
-  // Admin API key bypasses Clerk entirely (for networks where Clerk is unreachable).
-  const apiKey = getAdminApiKey();
-  if (apiKey) return { "X-Admin-Key": apiKey };
+  // Key-session auth travels in the httpOnly cookie (apiFetch sends
+  // credentials), so no header is needed when it is active.
+  if (getAdminApiKey()) return {};
   if (typeof window === "undefined" || !authTokenGetter) return {};
   try {
     const token = await authTokenGetter();
@@ -99,6 +122,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     response = await fetch(`${getApiUrl()}${cleanPath}`, {
       ...fetchOptions,
       headers,
+      credentials: "include",
       signal: controller.signal,
     });
   } catch (err) {
