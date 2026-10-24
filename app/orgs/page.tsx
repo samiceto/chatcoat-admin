@@ -26,6 +26,7 @@ type OrgItem = {
   plan_name: string;
   is_suspended: boolean;
   created_at: string | null;
+  trial_ends_at: string | null;
 };
 
 const PAGE_SIZE = 50;
@@ -127,6 +128,7 @@ export default function AdminOrgsPage() {
                 <Th>Owner</Th>
                 <Th>Plan</Th>
                 <Th>Status</Th>
+                <Th className="text-right">Trial ends</Th>
                 <Th className="text-right">Created</Th>
               </tr>
             </thead>
@@ -161,6 +163,11 @@ export default function AdminOrgsPage() {
                     ) : (
                       <Badge tone="green">Active</Badge>
                     )}
+                  </Td>
+                  <Td className="text-right text-[13px] text-gray-500">
+                    {org.trial_ends_at
+                      ? new Date(org.trial_ends_at).toLocaleDateString()
+                      : "—"}
                   </Td>
                   <Td className="text-right text-[13px] text-gray-500">
                     {org.created_at

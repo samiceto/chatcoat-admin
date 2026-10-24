@@ -46,13 +46,24 @@ const ADMIN_KEY_STORAGE = "chatcoat_admin_key";
 
 export function getAdminApiKey(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(ADMIN_KEY_STORAGE);
+  // Mitigation only: the admin key was persisted in localStorage, so it
+  // survived browser restarts and was readable by any script on the
+  // admin origin. sessionStorage at least clears it when the tab closes.
+  // The full fix is Clerk-only admin auth (or an httpOnly cookie) plus
+  // key rotation — that is still owed and is not claimed here.
+  return window.sessionStorage.getItem(ADMIN_KEY_STORAGE);
 }
 
 export function setAdminApiKey(key: string | null): void {
   if (typeof window === "undefined") return;
-  if (key) window.localStorage.setItem(ADMIN_KEY_STORAGE, key);
-  else window.localStorage.removeItem(ADMIN_KEY_STORAGE);
+  if (key) window.sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
+  else window.sessionStorage.removeItem(ADMIN_KEY_STORAGE);
+  // Clear any key left in localStorage by the old behaviour.
+  try {
+    window.localStorage.removeItem(ADMIN_KEY_STORAGE);
+  } catch {
+    // localStorage unavailable: sessionStorage key is still used.
+  }
 }
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {

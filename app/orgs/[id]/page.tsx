@@ -48,6 +48,8 @@ type OrgDetail = {
     plan_name: string;
   };
   created_at: string | null;
+  trial_ends_at: string | null;
+  last_activity_at: string | null;
 };
 
 type PlanOption = { slug: string; name: string };
@@ -213,7 +215,7 @@ export default function AdminOrgDetailPage() {
 
       <PageHeader
         title={org.name}
-        description={`${org.owner_email || "No owner email"} · ${org.member_count} member${org.member_count === 1 ? "" : "s"} · Created ${org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}`}
+        description={`${org.owner_email || "No owner email"} · ${org.member_count} member${org.member_count === 1 ? "" : "s"} · Created ${org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}${org.trial_ends_at ? ` · Trial ends ${new Date(org.trial_ends_at).toLocaleDateString()}` : ""}${org.last_activity_at ? ` · Last activity ${new Date(org.last_activity_at).toLocaleDateString()}` : ""}`}
         actions={
           <Button
             variant={org.is_suspended ? "primary" : "danger"}
