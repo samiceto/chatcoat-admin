@@ -31,6 +31,8 @@ const MODEL_OPTIONS = [
   { id: "gpt-4.1-mini", label: "GPT-4.1 mini", hint: "Balanced" },
   { id: "gpt-4o", label: "GPT-4o", hint: "Smarter" },
   { id: "gpt-4.1", label: "GPT-4.1", hint: "Best quality" },
+  { id: "deepseek-chat", label: "DeepSeek Chat", hint: "DeepSeek" },
+  { id: "deepseek-reasoner", label: "DeepSeek Reasoner", hint: "DeepSeek reasoning" },
 ];
 
 const ICONS: Record<string, typeof Bot> = {
@@ -175,24 +177,33 @@ export default function AiModelsPage() {
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className={labelClassName()}>Model</label>
-                        <select
+                        <input
                           value={drafts[m.key] || ""}
                           onChange={(e) =>
                             setDrafts((d) => ({ ...d, [m.key]: e.target.value }))
                           }
                           className={inputClassName()}
-                        >
-                          <option value="">
-                            {m.env_value
+                          list={`model-options-${m.key}`}
+                          placeholder={
+                            m.env_value
                               ? `Use env (${m.env_var} = ${m.env_value})`
-                              : `Use default (${m.default})`}
-                          </option>
+                              : `Use default (${m.default})`
+                          }
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                        <datalist id={`model-options-${m.key}`}>
                           {MODEL_OPTIONS.map((o) => (
                             <option key={o.id} value={o.id}>
                               {o.label} — {o.hint}
                             </option>
                           ))}
-                        </select>
+                        </datalist>
+                        <p className="mt-1.5 text-[12px] text-gray-400">
+                          Pick a preset or type any model id — e.g. deepseek-chat for
+                          DeepSeek, or another model from the provider set in
+                          LLM_BASE_URL. Leave empty to use the env/default value.
+                        </p>
                       </div>
                       <div>
                         <label className={labelClassName()}>Currently effective</label>
