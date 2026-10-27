@@ -60,6 +60,8 @@ export default function AiModelsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [assistantNumber, setAssistantNumber] = useState("");
   const [assistantNumberSaved, setAssistantNumberSaved] = useState<string | null>(null);
+  const [assistantDisplay, setAssistantDisplay] = useState("");
+  const [assistantDisplaySaved, setAssistantDisplaySaved] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,11 @@ export default function AiModelsPage() {
         );
         setAssistantNumber(s?.value || "");
         setAssistantNumberSaved(s?.value || null);
+        const disp = (data.settings || []).find(
+          (x) => x.key === "whatsapp.assistant_phone_display"
+        );
+        setAssistantDisplay(disp?.value || "");
+        setAssistantDisplaySaved(disp?.value || null);
       })
       .catch(() => {});
   }, []);
@@ -276,6 +283,57 @@ export default function AiModelsPage() {
               >
                 Save
               </Button>
+            </div>
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <label className={labelClassName()}>
+                Assistant WhatsApp number (display)
+              </label>
+              <p className="mt-0.5 text-[13px] text-gray-500">
+                The number users message to pair, shown on the /copilot-whatsapp
+                pairing page. Display only — the number ID above is what routes
+                messages, so put the human-readable number here, not the ID.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={assistantDisplay}
+                  onChange={(e) => setAssistantDisplay(e.target.value)}
+                  placeholder="e.g. +92 300 1234567"
+                  className={inputClassName()}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={
+                    saving || assistantDisplay.trim() === (assistantDisplaySaved || "")
+                  }
+                  onClick={async () => {
+                    setSaving(true);
+                    setError(null);
+                    try {
+                      await apiFetch("/api/admin/settings/general", {
+                        method: "PUT",
+                        body: JSON.stringify({
+                          settings: {
+                            "whatsapp.assistant_phone_display":
+                              assistantDisplay.trim() || null,
+                          },
+                        }),
+                      });
+                      setAssistantDisplaySaved(assistantDisplay.trim() || null);
+                      setSaved(true);
+                    } catch (err) {
+                      setError(
+                        err instanceof Error
+                          ? err.message
+                          : "Couldn't save display number."
+                      );
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
             </div>
           </div>
         </div>
