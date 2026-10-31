@@ -62,6 +62,8 @@ export default function AiModelsPage() {
   const [assistantNumberSaved, setAssistantNumberSaved] = useState<string | null>(null);
   const [assistantDisplay, setAssistantDisplay] = useState("");
   const [assistantDisplaySaved, setAssistantDisplaySaved] = useState<string | null>(null);
+  const [assistantTemplate, setAssistantTemplate] = useState("");
+  const [assistantTemplateSaved, setAssistantTemplateSaved] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +103,11 @@ export default function AiModelsPage() {
         );
         setAssistantDisplay(disp?.value || "");
         setAssistantDisplaySaved(disp?.value || null);
+        const tpl = (data.settings || []).find(
+          (x) => x.key === "whatsapp.daily_summary_template"
+        );
+        setAssistantTemplate(tpl?.value || "");
+        setAssistantTemplateSaved(tpl?.value || null);
       })
       .catch(() => {});
   }, []);
@@ -325,6 +332,58 @@ export default function AiModelsPage() {
                         err instanceof Error
                           ? err.message
                           : "Couldn't save display number."
+                      );
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <label className={labelClassName()}>
+                Daily summary template name
+              </label>
+              <p className="mt-0.5 text-[13px] text-gray-500">
+                Name of the approved WhatsApp template the Owner Agent sends
+                each morning (the pairing gate). Must match the template name
+                in WhatsApp Manager exactly. Leave empty to use the built-in
+                default, chatcoat_daily_summary.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={assistantTemplate}
+                  onChange={(e) => setAssistantTemplate(e.target.value)}
+                  placeholder="chatcoat_daily_summary"
+                  className={inputClassName()}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={
+                    saving || assistantTemplate.trim() === (assistantTemplateSaved || "")
+                  }
+                  onClick={async () => {
+                    setSaving(true);
+                    setError(null);
+                    try {
+                      await apiFetch("/api/admin/settings/general", {
+                        method: "PUT",
+                        body: JSON.stringify({
+                          settings: {
+                            "whatsapp.daily_summary_template":
+                              assistantTemplate.trim() || null,
+                          },
+                        }),
+                      });
+                      setAssistantTemplateSaved(assistantTemplate.trim() || null);
+                      setSaved(true);
+                    } catch (err) {
+                      setError(
+                        err instanceof Error
+                          ? err.message
+                          : "Couldn't save template name."
                       );
                     } finally {
                       setSaving(false);
