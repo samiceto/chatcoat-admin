@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Loader2, MessageSquareText, Sparkles } from "lucide-react";
+import { Bot, Loader2, MessageSquareText, ShieldAlert, Sparkles } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import {
   Badge,
@@ -55,6 +55,28 @@ type GeneralSetting = {
   value: string | null;
 };
 
+type FailoverPreview = {
+  dry_run: boolean;
+  resumed_event_pending: boolean;
+  orgs_on_primary: number;
+  orgs_on_secondary: number;
+  recipients_count: number;
+  already_messaged_count: number;
+  secondary_configured: boolean;
+  failover_template: string | null;
+  requires?: string;
+};
+
+type FailoverResult = {
+  result?: string;
+  resumed?: boolean;
+  flipped_orgs?: number;
+  sent?: number;
+  already_sent?: number;
+  failed_count?: number;
+  status?: string;
+};
+
 export default function AiModelsPage() {
   const [models, setModels] = useState<ModelSetting[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -64,6 +86,16 @@ export default function AiModelsPage() {
   const [assistantDisplaySaved, setAssistantDisplaySaved] = useState<string | null>(null);
   const [assistantTemplate, setAssistantTemplate] = useState("");
   const [assistantTemplateSaved, setAssistantTemplateSaved] = useState<string | null>(null);
+  const [assistantNumber2, setAssistantNumber2] = useState("");
+  const [assistantNumber2Saved, setAssistantNumber2Saved] = useState<string | null>(null);
+  const [assistantDisplay2, setAssistantDisplay2] = useState("");
+  const [assistantDisplay2Saved, setAssistantDisplay2Saved] = useState<string | null>(null);
+  const [failoverTemplate, setFailoverTemplate] = useState("");
+  const [failoverTemplateSaved, setFailoverTemplateSaved] = useState<string | null>(null);
+  const [foPreview, setFoPreview] = useState<FailoverPreview | null>(null);
+  const [foResult, setFoResult] = useState<FailoverResult | null>(null);
+  const [foConfirmed, setFoConfirmed] = useState(false);
+  const [foBusy, setFoBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,9 +140,81 @@ export default function AiModelsPage() {
         );
         setAssistantTemplate(tpl?.value || "");
         setAssistantTemplateSaved(tpl?.value || null);
+        const num2 = (data.settings || []).find(
+          (x) => x.key === "whatsapp.assistant_phone_number_id_2"
+        );
+        setAssistantNumber2(num2?.value || "");
+        setAssistantNumber2Saved(num2?.value || null);
+        const disp2 = (data.settings || []).find(
+          (x) => x.key === "whatsapp.assistant_phone_display_2"
+        );
+        setAssistantDisplay2(disp2?.value || "");
+        setAssistantDisplay2Saved(disp2?.value || null);
+        const ftpl = (data.settings || []).find(
+          (x) => x.key === "whatsapp.failover_template"
+        );
+        setFailoverTemplate(ftpl?.value || "");
+        setFailoverTemplateSaved(ftpl?.value || null);
       })
       .catch(() => {});
   }, []);
+
+  const saveGeneralSetting = async (
+    key: string,
+    value: string,
+    apply: (v: string | null) => void,
+    failure: string
+  ) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiFetch("/api/admin/settings/general", {
+        method: "PUT",
+        body: JSON.stringify({ settings: { [key]: value.trim() || null } }),
+      });
+      apply(value.trim() || null);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const runFailoverPreview = async () => {
+    setFoBusy(true);
+    setError(null);
+    setFoResult(null);
+    try {
+      const data = await apiFetch<FailoverPreview>(
+        "/api/admin/settings/assistant-failover",
+        { method: "POST", body: JSON.stringify({ dry_run: true }) }
+      );
+      setFoPreview(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't preview the failover.");
+    } finally {
+      setFoBusy(false);
+    }
+  };
+
+  const runFailover = async () => {
+    setFoBusy(true);
+    setError(null);
+    try {
+      const data = await apiFetch<FailoverResult>(
+        "/api/admin/settings/assistant-failover",
+        { method: "POST", body: JSON.stringify({ dry_run: false, confirm: true }) }
+      );
+      setFoResult(data);
+      setFoPreview(null);
+      setFoConfirmed(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The failover didn't run.");
+    } finally {
+      setFoBusy(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -344,6 +448,75 @@ export default function AiModelsPage() {
             </div>
             <div className="mt-4 border-t border-gray-100 pt-4">
               <label className={labelClassName()}>
+                Secondary assistant number (+92) — number ID
+              </label>
+              <p className="mt-0.5 text-[13px] text-gray-500">
+                The second assistant number, in the SAME WhatsApp business account
+                as the primary number above — both share the one access token.
+                Orgs an admin assigns to the secondary number (org page) are
+                served by it. The number only counts as configured when BOTH
+                this ID and its display number below are set; a half-filled
+                secondary is ignored everywhere.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={assistantNumber2}
+                  onChange={(e) => setAssistantNumber2(e.target.value)}
+                  placeholder="e.g. 123456789012345"
+                  className={inputClassName()}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={
+                    saving || assistantNumber2.trim() === (assistantNumber2Saved || "")
+                  }
+                  onClick={() =>
+                    saveGeneralSetting(
+                      "whatsapp.assistant_phone_number_id_2",
+                      assistantNumber2,
+                      setAssistantNumber2Saved,
+                      "Couldn't save the secondary number."
+                    )
+                  }
+                >
+                  Save
+                </Button>
+              </div>
+              <label className={`${labelClassName()} mt-4 block`}>
+                Secondary assistant number (display)
+              </label>
+              <p className="mt-0.5 text-[13px] text-gray-500">
+                The human-readable +92 number, shown on the pairing page of
+                orgs assigned to the secondary number. Display only — the ID
+                above routes.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={assistantDisplay2}
+                  onChange={(e) => setAssistantDisplay2(e.target.value)}
+                  placeholder="e.g. +92 300 1234567"
+                  className={inputClassName()}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={
+                    saving || assistantDisplay2.trim() === (assistantDisplay2Saved || "")
+                  }
+                  onClick={() =>
+                    saveGeneralSetting(
+                      "whatsapp.assistant_phone_display_2",
+                      assistantDisplay2,
+                      setAssistantDisplay2Saved,
+                      "Couldn't save the secondary display number."
+                    )
+                  }
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <label className={labelClassName()}>
                 Daily summary template name
               </label>
               <p className="mt-0.5 text-[13px] text-gray-500">
@@ -394,6 +567,167 @@ export default function AiModelsPage() {
                 </Button>
               </div>
             </div>
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <label className={labelClassName()}>
+                Failover template name
+              </label>
+              <p className="mt-0.5 text-[13px] text-gray-500">
+                Name of the pre-approved template the failover switch (below)
+                sends from the secondary number when the primary number is
+                lost — suggested name: chatcoat_assistant_failover. It must
+                be created and approved in WhatsApp Manager first and must
+                take NO variables. Leave empty and the failover switch
+                refuses to run.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={failoverTemplate}
+                  onChange={(e) => setFailoverTemplate(e.target.value)}
+                  placeholder="chatcoat_assistant_failover"
+                  className={inputClassName()}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={
+                    saving || failoverTemplate.trim() === (failoverTemplateSaved || "")
+                  }
+                  onClick={() =>
+                    saveGeneralSetting(
+                      "whatsapp.failover_template",
+                      failoverTemplate,
+                      setFailoverTemplateSaved,
+                      "Couldn't save the failover template name."
+                    )
+                  }
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="mt-4">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+            <ShieldAlert size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[14px] font-semibold text-gray-900">
+              Assistant number failover
+            </h3>
+            <p className="mt-0.5 text-[13px] text-gray-500">
+              Emergency switch for when the primary (+1) assistant number is
+              lost. It moves EVERY org still on the primary number to the
+              secondary (+92) number and sends each verified owner the
+              failover template from +92 telling them to save the new
+              number. <strong>One way only</strong> — there is no switch
+              back; an owner moved to +92 stays there (an individual org
+              can be re-assigned from its org page). Nothing here runs on
+              its own: a person confirms the loss and presses the switch.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                variant="secondary"
+                disabled={foBusy}
+                onClick={runFailoverPreview}
+              >
+                {foBusy && <Loader2 size={14} className="animate-spin" />}
+                Preview failover
+              </Button>
+            </div>
+            {foPreview && (
+              <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[13px] text-gray-700">
+                <ul className="space-y-1">
+                  <li>
+                    Orgs on the primary number (would move):{" "}
+                    <strong>{foPreview.orgs_on_primary}</strong>
+                  </li>
+                  <li>
+                    Orgs already on the secondary number:{" "}
+                    <strong>{foPreview.orgs_on_secondary}</strong>
+                  </li>
+                  <li>
+                    Verified owners who would be messaged:{" "}
+                    <strong>{foPreview.recipients_count}</strong>
+                    {foPreview.already_messaged_count > 0 &&
+                      ` (${foPreview.already_messaged_count} already messaged by an interrupted run — they won't be messaged again)`}
+                  </li>
+                  <li>
+                    Secondary number configured:{" "}
+                    <strong>{foPreview.secondary_configured ? "Yes" : "No"}</strong>
+                  </li>
+                  <li>
+                    Failover template:{" "}
+                    <strong>{foPreview.failover_template || "Not set"}</strong>
+                  </li>
+                  {foPreview.resumed_event_pending && (
+                    <li>
+                      An earlier failover run is still in progress — running
+                      the switch resumes it instead of starting over.
+                    </li>
+                  )}
+                </ul>
+                {(!foPreview.secondary_configured || !foPreview.failover_template) && (
+                  <p className="mt-2 font-medium text-rose-600">
+                    The switch will refuse to run until the secondary number
+                    (ID + display) and the failover template name are set
+                    above.
+                  </p>
+                )}
+                <label className="mt-3 flex items-start gap-2 text-[13px] text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={foConfirmed}
+                    onChange={(e) => setFoConfirmed(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    I confirm the primary number is lost and understand every
+                    org above moves to the secondary number. This cannot be
+                    undone from here.
+                  </span>
+                </label>
+                <div className="mt-3">
+                  <Button
+                    variant="danger"
+                    disabled={
+                      foBusy ||
+                      !foConfirmed ||
+                      !foPreview.secondary_configured ||
+                      !foPreview.failover_template
+                    }
+                    onClick={runFailover}
+                  >
+                    {foBusy && <Loader2 size={14} className="animate-spin" />}
+                    Run failover — move all orgs to +92
+                  </Button>
+                </div>
+              </div>
+            )}
+            {foResult && (
+              <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800">
+                {foResult.result === "nothing_to_do" ? (
+                  <p>Nothing to do — no orgs were left on the primary number.</p>
+                ) : (
+                  <p>
+                    Failover {foResult.resumed ? "resumed and " : ""}completed
+                    {typeof foResult.status === "string" &&
+                    foResult.status === "completed_with_failures"
+                      ? " with failures"
+                      : ""}
+                    : <strong>{foResult.flipped_orgs ?? 0}</strong> orgs moved,{" "}
+                    <strong>{foResult.sent ?? 0}</strong> owners messaged
+                    {(foResult.already_sent ?? 0) > 0 &&
+                      `, ${foResult.already_sent} already messaged earlier`}
+                    {(foResult.failed_count ?? 0) > 0 &&
+                      `, ${foResult.failed_count} message(s) failed — re-running the switch retries only those owners`}
+                    .
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Card>

@@ -23,6 +23,8 @@ type OrgDetail = {
   owner_email: string | null;
   plan_slug: string | null;
   plan_name: string;
+  assistant_phone_key: string;
+  assistant_phone_display: string | null;
   is_suspended: boolean;
   member_count: number;
   overrides: Record<string, number>;
@@ -92,6 +94,7 @@ export default function AdminOrgDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [planSlug, setPlanSlug] = useState("");
+  const [assistantKey, setAssistantKey] = useState("primary");
   const [overrideMetric, setOverrideMetric] = useState(OVERRIDE_METRICS[0].key);
   const [overrideValue, setOverrideValue] = useState("");
 
@@ -105,6 +108,7 @@ export default function AdminOrgDetailPage() {
       .then(([orgData, planData]) => {
         setOrg(orgData);
         setPlanSlug(orgData.plan_slug || "");
+        setAssistantKey(orgData.assistant_phone_key || "primary");
         setPlans((planData || []).map((p) => ({ slug: p.slug, name: p.name })));
         setError(null);
       })
@@ -139,6 +143,16 @@ export default function AdminOrgDetailPage() {
           body: JSON.stringify({ plan_slug: planSlug || null }),
         }),
       "Couldn't update the plan."
+    );
+
+  const saveAssistantKey = () =>
+    mutate(
+      () =>
+        apiFetch(`/api/admin/orgs/${orgId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assistant_phone_key: assistantKey }),
+        }),
+      "Couldn't update the assistant number."
     );
 
   const toggleSuspend = () => {
@@ -266,6 +280,36 @@ export default function AdminOrgDetailPage() {
             <p className="mt-1.5 text-xs text-gray-400">
               An admin-assigned plan overrides the Paddle subscription. Clear it
               to fall back to billing-derived tiering.
+            </p>
+          </div>
+
+          <div className="mt-6 border-t border-gray-100 pt-5">
+            <label className={labelClassName()}>Assistant WhatsApp number</label>
+            <div className="flex gap-2">
+              <select
+                value={assistantKey}
+                onChange={(e) => setAssistantKey(e.target.value)}
+                disabled={saving}
+                className={inputClassName("flex-1")}
+              >
+                <option value="primary">Primary (+1)</option>
+                <option value="secondary">Secondary (+92)</option>
+              </select>
+              <Button
+                variant="primary"
+                onClick={saveAssistantKey}
+                disabled={saving || assistantKey === (org.assistant_phone_key || "primary")}
+              >
+                Save
+              </Button>
+            </div>
+            <p className="mt-1.5 text-xs text-gray-400">
+              Which ChatCoat assistant number serves this org's owner — replies,
+              daily summaries and the pairing page all use it. Currently served
+              by {org.assistant_phone_display || "the primary number"}.
+              Assigning the secondary number needs it configured on the AI
+              Models page first. (The failover switch moves orgs in bulk; this
+              is the per-org control, and the only way to move one back.)
             </p>
           </div>
 
