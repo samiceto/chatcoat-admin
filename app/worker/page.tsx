@@ -103,6 +103,9 @@ export default function AdminWorkerPage() {
   }, [load]);
 
   const counts = stats?.counts ?? {};
+  // The API may briefly serve the previous build (no utilization block)
+  // while the two deploys race — render the rest of the page regardless.
+  const util = stats?.utilization ?? null;
   const health =
     stats == null
       ? null
@@ -149,57 +152,55 @@ export default function AdminWorkerPage() {
             </span>
           </div>
 
-          <Card>
-            <div className="flex items-baseline justify-between gap-4">
-              <CardTitle>Worker capacity — last hour</CardTitle>
-              <span className="text-2xl font-bold text-gray-900">
-                {stats.utilization.load_percent_last_hour}%
-                <span className="ml-2 text-sm font-medium text-gray-500">
-                  loaded ·{" "}
-                  {Math.max(
-                    0,
-                    Math.round(100 - stats.utilization.load_percent_last_hour)
-                  )}
-                  % free
+          {util && (
+            <Card>
+              <div className="flex items-baseline justify-between gap-4">
+                <CardTitle>Worker capacity — last hour</CardTitle>
+                <span className="text-2xl font-bold text-gray-900">
+                  {util.load_percent_last_hour}%
+                  <span className="ml-2 text-sm font-medium text-gray-500">
+                    loaded ·{" "}
+                    {Math.max(0, Math.round(100 - util.load_percent_last_hour))}
+                    % free
+                  </span>
                 </span>
-              </span>
-            </div>
-            <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-gray-200">
-              <div
-                className={
-                  stats.utilization.load_percent_last_hour < 60
-                    ? "h-full rounded-full bg-emerald-500"
-                    : stats.utilization.load_percent_last_hour < 85
-                      ? "h-full rounded-full bg-amber-500"
-                      : "h-full rounded-full bg-rose-500"
-                }
-                style={{
-                  width: `${Math.min(100, Math.max(0.5, stats.utilization.load_percent_last_hour))}%`,
-                }}
-              />
-            </div>
-            <p className="mt-3 text-[13px] text-gray-600">
-              The worker spent{" "}
-              <strong>{fmtWait(stats.utilization.busy_seconds_last_hour)}</strong>{" "}
-              of the last 60 minutes actually executing jobs. Current pace:{" "}
-              <strong>{stats.runs_last_hour} jobs/hour</strong>
-              {stats.utilization.estimated_ceiling_jobs_per_hour != null && (
-                <>
-                  {" "}
-                  — at this job mix, this one worker tops out around{" "}
-                  <strong>
-                    ≈
-                    {stats.utilization.estimated_ceiling_jobs_per_hour.toLocaleString()}{" "}
-                    jobs/hour
-                  </strong>
-                </>
-              )}
-              . Average load over 24 hours:{" "}
-              <strong>{stats.utilization.load_percent_24h}%</strong>. When the
-              bar sits near 100% for sustained stretches, due jobs start
-              waiting — that is the moment to split the worker or add one.
-            </p>
-          </Card>
+              </div>
+              <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className={
+                    util.load_percent_last_hour < 60
+                      ? "h-full rounded-full bg-emerald-500"
+                      : util.load_percent_last_hour < 85
+                        ? "h-full rounded-full bg-amber-500"
+                        : "h-full rounded-full bg-rose-500"
+                  }
+                  style={{
+                    width: `${Math.min(100, Math.max(0.5, util.load_percent_last_hour))}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-3 text-[13px] text-gray-600">
+                The worker spent{" "}
+                <strong>{fmtWait(util.busy_seconds_last_hour)}</strong> of the
+                last 60 minutes actually executing jobs. Current pace:{" "}
+                <strong>{stats.runs_last_hour} jobs/hour</strong>
+                {util.estimated_ceiling_jobs_per_hour != null && (
+                  <>
+                    {" "}
+                    — at this job mix, this one worker tops out around{" "}
+                    <strong>
+                      ≈{util.estimated_ceiling_jobs_per_hour.toLocaleString()}{" "}
+                      jobs/hour
+                    </strong>
+                  </>
+                )}
+                . Average load over 24 hours:{" "}
+                <strong>{util.load_percent_24h}%</strong>. When the bar sits
+                near 100% for sustained stretches, due jobs start waiting —
+                that is the moment to split the worker or add one.
+              </p>
+            </Card>
+          )}
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
             <Stat label="Due & waiting" value={String(stats.due_pending)} />
