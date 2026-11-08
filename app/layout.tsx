@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  Activity,
   Building2,
   Banknote,
   CreditCard,
@@ -45,6 +46,7 @@ const NAV = [
     section: "System",
     items: [
       { href: "/ai-models", label: "AI Models", icon: Sparkles },
+      { href: "/worker", label: "Worker", icon: Activity },
       { href: "/audit", label: "Audit log", icon: ScrollText },
     ],
   },
@@ -58,6 +60,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/revenue": "Revenue",
   "/staff": "Staff",
   "/ai-models": "AI Models",
+  "/worker": "Worker",
   "/audit": "Audit log",
 };
 
