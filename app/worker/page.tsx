@@ -56,6 +56,13 @@ type WorkerStats = {
     created_at: string | null;
     last_error: string;
   }[];
+  // Present once the API serves the lanes block; absent briefly
+  // while the API deploy races this page.
+  lanes?: {
+    pending_by_type: Record<string, number>;
+    running: number;
+    agent_oldest_wait_seconds: number;
+  };
 };
 
 function fmtWait(seconds: number): string {
@@ -106,6 +113,13 @@ export default function AdminWorkerPage() {
   // The API may briefly serve the previous build (no utilization block)
   // while the two deploys race — render the rest of the page regardless.
   const util = stats?.utilization ?? null;
+  const lanes = stats?.lanes ?? null;
+  const laneLabels: Record<string, string> = {
+    whatsapp_copilot_reply: "Owner agent",
+    autopilot_whatsapp_reply: "Customer agent",
+    agent_dm_reply: "Reply agent (DMs)",
+    sync_store_products: "Store syncs",
+  };
   const health =
     stats == null
       ? null
@@ -222,6 +236,27 @@ export default function AdminWorkerPage() {
             <Stat label="Dead letters (all time)" value={String(counts.dead_letter ?? 0)} />
             <Stat label="Failed state (all time)" value={String(counts.failed ?? 0)} />
           </div>
+
+          {lanes && (
+            <Card>
+              <CardTitle>Agent &amp; sync lanes</CardTitle>
+              <p className="mt-1 text-[13px] text-gray-600">
+                Agent turns and store syncs run in detached lanes, not the
+                serial queue. Running in lanes now:{" "}
+                <strong>{lanes.running}</strong> · Oldest agent wait:{" "}
+                <strong>{fmtWait(lanes.agent_oldest_wait_seconds)}</strong>
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+                {Object.entries(laneLabels).map(([jobType, label]) => (
+                  <Stat
+                    key={jobType}
+                    label={`${label} — queued`}
+                    value={String(lanes.pending_by_type[jobType] ?? 0)}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
 
           <Card>
             <CardTitle>Throughput by job type — last 24 hours</CardTitle>
