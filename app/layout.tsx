@@ -155,6 +155,9 @@ function AdminGate({ children }: { children: React.ReactNode }) {
       setKeyError(err instanceof Error ? err.message : "Invalid key.");
     } finally {
       setVerifyingKey(false);
+      // The raw key must not linger in component state for the tab's
+      // life (audit L-22) — the session cookie is the credential now.
+      setKeyInput("");
     }
   };
 
