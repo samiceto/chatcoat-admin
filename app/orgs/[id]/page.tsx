@@ -26,6 +26,9 @@ type OrgDetail = {
   assistant_phone_key: string;
   assistant_phone_display: string | null;
   is_suspended: boolean;
+  purchase_blocked: boolean;
+  purchase_blocked_at: string | null;
+  purchase_block_reason: string | null;
   member_count: number;
   overrides: Record<string, number>;
   entitlements: {
@@ -176,6 +179,26 @@ export default function AdminOrgDetailPage() {
     );
   };
 
+  const togglePurchaseBlock = () => {
+    if (!org) return;
+    if (
+      !org.purchase_blocked &&
+      !window.confirm(
+        `Block purchases for "${org.name}"? Trials, plan changes, and credit packs will be disabled, and the owner's email will be blocked for future accounts.`
+      )
+    ) {
+      return;
+    }
+    mutate(
+      () =>
+        apiFetch(`/api/admin/orgs/${orgId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ purchase_blocked: !org.purchase_blocked }),
+        }),
+      "Couldn't update the purchase block."
+    );
+  };
+
   const addOverride = () => {
     const value = parseInt(overrideValue, 10);
     if (isNaN(value) || value < 0) {
@@ -231,14 +254,19 @@ export default function AdminOrgDetailPage() {
         title={org.name}
         description={`${org.owner_email || "No owner email"} · ${org.member_count} member${org.member_count === 1 ? "" : "s"} · Created ${org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}${org.trial_ends_at ? ` · Trial ends ${new Date(org.trial_ends_at).toLocaleDateString()}` : ""}${org.last_activity_at ? ` · Last activity ${new Date(org.last_activity_at).toLocaleDateString()}` : ""}`}
         actions={
-          <Button
-            variant={org.is_suspended ? "primary" : "danger"}
-            onClick={toggleSuspend}
-            disabled={saving}
-          >
-            <ShieldAlert size={14} />
-            {org.is_suspended ? "Unsuspend workspace" : "Suspend workspace"}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={togglePurchaseBlock} disabled={saving}>
+              {org.purchase_blocked ? "Unblock purchases" : "Block purchases"}
+            </Button>
+            <Button
+              variant={org.is_suspended ? "primary" : "danger"}
+              onClick={toggleSuspend}
+              disabled={saving}
+            >
+              <ShieldAlert size={14} />
+              {org.is_suspended ? "Unsuspend workspace" : "Suspend workspace"}
+            </Button>
+          </div>
         }
       />
       <ErrorAlert message={error} />
@@ -250,6 +278,11 @@ export default function AdminOrgDetailPage() {
           <Badge tone="green">Active</Badge>
         )}
         <Badge tone="indigo">{org.usage.plan_name}</Badge>
+        {org.purchase_blocked && (
+          <Badge tone="red">
+            Purchases blocked{org.purchase_block_reason ? ` — ${org.purchase_block_reason}` : ""}
+          </Badge>
+        )}
         {org.plan_slug && <Badge tone="gray">Admin-assigned plan</Badge>}
         <span className="font-mono text-[11px] text-gray-400">{org.id}</span>
       </div>
