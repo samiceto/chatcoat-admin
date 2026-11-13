@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Loader2, MessageSquareText, ShieldAlert, Sparkles } from "lucide-react";
+import { Bot, Gauge, Loader2, MessageSquareText, ShieldAlert, Sparkles } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import {
   Badge,
@@ -92,6 +92,8 @@ export default function AiModelsPage() {
   const [assistantDisplay2Saved, setAssistantDisplay2Saved] = useState<string | null>(null);
   const [failoverTemplate, setFailoverTemplate] = useState("");
   const [failoverTemplateSaved, setFailoverTemplateSaved] = useState<string | null>(null);
+  const [aiCap, setAiCap] = useState("");
+  const [aiCapSaved, setAiCapSaved] = useState<string | null>(null);
   const [foPreview, setFoPreview] = useState<FailoverPreview | null>(null);
   const [foResult, setFoResult] = useState<FailoverResult | null>(null);
   const [foConfirmed, setFoConfirmed] = useState(false);
@@ -155,6 +157,11 @@ export default function AiModelsPage() {
         );
         setFailoverTemplate(ftpl?.value || "");
         setFailoverTemplateSaved(ftpl?.value || null);
+        const cap = (data.settings || []).find(
+          (x) => x.key === "ai.global_daily_cap"
+        );
+        setAiCap(cap?.value || "");
+        setAiCapSaved(cap?.value || null);
       })
       .catch(() => {});
   }, []);
@@ -604,6 +611,56 @@ export default function AiModelsPage() {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="mt-4">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+            <Gauge size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[14px] font-semibold text-gray-900">
+              Global AI daily cap
+            </h3>
+            <p className="mt-0.5 text-[13px] text-gray-500">
+              The platform-wide AI kill switch. It counts every AI call
+              from every customer together; past this many calls in one
+              day (UTC), all AI features pause until midnight UTC, so a
+              runaway loop or abusive accounts cannot run the AI bill
+              past this ceiling. Changes apply immediately — no deploy.
+            </p>
+            <label className={`${labelClassName()} mt-4 block`}>
+              Max AI calls per day (all customers)
+            </label>
+            <div className="mt-3 flex gap-2">
+              <input
+                value={aiCap}
+                onChange={(e) => setAiCap(e.target.value)}
+                placeholder="25000"
+                inputMode="numeric"
+                className={inputClassName()}
+              />
+              <Button
+                variant="secondary"
+                disabled={saving || aiCap.trim() === (aiCapSaved || "")}
+                onClick={() =>
+                  saveGeneralSetting(
+                    "ai.global_daily_cap",
+                    aiCap,
+                    setAiCapSaved,
+                    "Couldn't save the AI daily cap."
+                  )
+                }
+              >
+                Save
+              </Button>
+            </div>
+            <p className="mt-2 text-[13px] text-gray-500">
+              Leave empty to use the built-in default of 25,000. Set 0
+              to switch the breaker off. Whole numbers only.
+            </p>
           </div>
         </div>
       </Card>
