@@ -10,6 +10,7 @@ import {
   CreditCard,
   KeyRound,
   LayoutDashboard,
+  LifeBuoy,
   Loader2,
   LogOut,
   ScrollText,
@@ -36,6 +37,7 @@ const NAV = [
       { href: "/users", label: "Users", icon: UserRound },
       { href: "/plans", label: "Plans", icon: CreditCard },
       { href: "/revenue", label: "Revenue", icon: Banknote },
+      { href: "/support", label: "Support", icon: LifeBuoy },
     ],
   },
   {
@@ -58,6 +60,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/users": "Users",
   "/plans": "Plans",
   "/revenue": "Revenue",
+  "/support": "Support tickets",
   "/staff": "Staff",
   "/ai-models": "AI Models",
   "/worker": "Worker",
