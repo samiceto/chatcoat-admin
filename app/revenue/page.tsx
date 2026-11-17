@@ -142,7 +142,7 @@ export default function AdminRevenuePage() {
               )}
               delta={Object.entries(summary?.status_counts || {})
                 .map(([s, c]) => `${c} ${s}`)
-                .join(" · ")}
+                .join(", ")}
             />
           </div>
 
@@ -171,7 +171,7 @@ export default function AdminRevenuePage() {
                     </div>
                     <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className="h-full rounded-full bg-indigo-600"
+                        className="h-full rounded-full bg-gray-800"
                         style={{ width: `${(p.mrr_cents / maxPlanMrr) * 100}%` }}
                       />
                     </div>

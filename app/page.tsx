@@ -2,25 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  Banknote,
-  Building2,
-  CreditCard,
-  Hourglass,
-  ShieldAlert,
-  UserCog,
-  Users,
-} from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import {
   Badge,
   Card,
-  CardTitle,
   ErrorAlert,
   LoadingRow,
   PageHeader,
-  Stat,
+  Readout,
+  ReadoutCell,
+  TableShell,
   Td,
   Th,
   Tr,
@@ -62,6 +53,28 @@ function timeAgo(iso: string | null): string {
   return d === 1 ? "yesterday" : `${d}d ago`;
 }
 
+function SectionHeading({
+  title,
+  href,
+  linkLabel,
+}: {
+  title: string;
+  href: string;
+  linkLabel: string;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <h2 className="font-display text-[26px] text-gray-900">{title}</h2>
+      <Link
+        href={href}
+        className="text-[13px] font-semibold text-indigo-700 underline-offset-2 hover:underline"
+      >
+        {linkLabel}
+      </Link>
+    </div>
+  );
+}
+
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
@@ -98,6 +111,8 @@ export default function AdminOverviewPage() {
     );
   }
 
+  const suspended = stats?.suspended_organizations ?? 0;
+
   return (
     <div>
       <PageHeader
@@ -106,48 +121,10 @@ export default function AdminOverviewPage() {
       />
       <ErrorAlert message={error} />
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
-        <Stat
-          label="Organizations"
-          value={(stats?.organizations ?? 0).toLocaleString()}
-          icon={<Building2 size={16} />}
-        />
-        <Stat
-          label="Users"
-          value={(stats?.users ?? 0).toLocaleString()}
-          icon={<Users size={16} />}
-        />
-        <Stat
-          label="Active subscriptions"
-          value={(stats?.active_subscriptions ?? 0).toLocaleString()}
-          icon={<CreditCard size={16} />}
-        />
-        <Stat
-          label="Trialing"
-          value={(stats?.trialing ?? 0).toLocaleString()}
-          icon={<Hourglass size={16} />}
-          deltaTone={stats && stats.trialing > 0 ? "neutral" : "neutral"}
-        />
-        <Stat
-          label="Suspended"
-          value={(stats?.suspended_organizations ?? 0).toLocaleString()}
-          icon={<ShieldAlert size={16} />}
-          delta={
-            stats && stats.suspended_organizations > 0
-              ? "Needs review"
-              : "All clear"
-          }
-          deltaTone={
-            stats && stats.suspended_organizations > 0 ? "down" : "up"
-          }
-        />
-        <Stat
-          label="Staff members"
-          value={(stats?.staff ?? 0).toLocaleString()}
-          icon={<UserCog size={16} />}
-        />
-        <Stat
-          label="MRR"
+      <Readout>
+        <ReadoutCell
+          wide
+          label="Monthly recurring revenue"
           value={
             mrrCents === null
               ? "—"
@@ -157,23 +134,40 @@ export default function AdminOverviewPage() {
                   maximumFractionDigits: 0,
                 })
           }
-          icon={<Banknote size={16} />}
         />
-      </div>
+        <ReadoutCell
+          label="Organizations"
+          value={(stats?.organizations ?? 0).toLocaleString()}
+        />
+        <ReadoutCell label="Users" value={(stats?.users ?? 0).toLocaleString()} />
+        <ReadoutCell
+          label="Active subscriptions"
+          value={(stats?.active_subscriptions ?? 0).toLocaleString()}
+        />
+        <ReadoutCell
+          label="Trialing"
+          value={(stats?.trialing ?? 0).toLocaleString()}
+        />
+        <ReadoutCell
+          label="Suspended"
+          value={suspended.toLocaleString()}
+          note={suspended > 0 ? "Needs review" : "All clear"}
+          noteTone={suspended > 0 ? "alert" : "ok"}
+        />
+        <ReadoutCell
+          label="Staff members"
+          value={(stats?.staff ?? 0).toLocaleString()}
+        />
+      </Readout>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-5">
-        <Card padded={false} className="xl:col-span-3">
-          <div className="flex items-center justify-between px-5 pb-3 pt-5">
-            <CardTitle>Recent organizations</CardTitle>
-            <Link
-              href="/orgs"
-              className="inline-flex items-center gap-1 text-[13px] font-semibold text-indigo-600 hover:text-indigo-700"
-            >
-              View all <ArrowRight size={13} />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+      <div className="mt-14 grid gap-x-12 gap-y-14 xl:grid-cols-5">
+        <section className="xl:col-span-3">
+          <SectionHeading
+            title="Recent organizations"
+            href="/orgs"
+            linkLabel="View all organizations"
+          />
+          <TableShell>
             <thead>
               <tr>
                 <Th>Organization</Th>
@@ -188,11 +182,11 @@ export default function AdminOverviewPage() {
                   <Td>
                     <Link
                       href={`/orgs/${org.id}`}
-                      className="font-semibold text-gray-900 hover:text-indigo-600 hover:underline"
+                      className="font-semibold text-gray-900 hover:text-indigo-700 hover:underline"
                     >
                       {org.name}
                     </Link>
-                    <div className="text-[11px] text-gray-400">
+                    <div className="text-[12px] text-gray-500">
                       {org.owner_email || "—"}
                     </div>
                   </Td>
@@ -206,66 +200,55 @@ export default function AdminOverviewPage() {
                       <Badge tone="green">Active</Badge>
                     )}
                   </Td>
-                  <Td className="text-right text-[13px] text-gray-500">
+                  <Td className="tnum whitespace-nowrap text-right text-[13px] text-gray-500">
                     {timeAgo(org.created_at)}
                   </Td>
                 </Tr>
               ))}
               {orgs.length === 0 && (
                 <Tr>
-                  <Td colSpan={4} className="text-center text-gray-400">
+                  <Td colSpan={4} className="py-10 text-center text-gray-500">
                     No organizations yet.
                   </Td>
                 </Tr>
               )}
             </tbody>
-            </table>
-          </div>
-        </Card>
+          </TableShell>
+        </section>
 
-        <Card padded={false} className="xl:col-span-2">
-          <div className="flex items-center justify-between px-5 pb-3 pt-5">
-            <CardTitle>Recent admin activity</CardTitle>
-            <Link
-              href="/audit"
-              className="inline-flex items-center gap-1 text-[13px] font-semibold text-indigo-600 hover:text-indigo-700"
-            >
-              View all <ArrowRight size={13} />
-            </Link>
-          </div>
-          <div className="px-2 pb-3">
+        <section className="xl:col-span-2">
+          <SectionHeading
+            title="Recent admin activity"
+            href="/audit"
+            linkLabel="View audit log"
+          />
+          <ul className="border-t-2 border-gray-900">
             {activity.map((item) => (
-              <div
+              <li
                 key={item.id}
-                className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-gray-50"
+                className="flex items-start justify-between gap-4 border-b border-gray-200 py-3.5 last:border-b-0"
               >
-                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium text-gray-900">
+                <div className="min-w-0">
+                  <div className="truncate text-[14px] font-medium text-gray-900">
                     {item.action.replace(/_/g, " ")}
-                    {item.entity_type && (
-                      <span className="font-normal text-gray-400">
-                        {" "}
-                        · {item.entity_type}
-                      </span>
-                    )}
                   </div>
-                  <div className="truncate text-[11px] text-gray-400">
+                  <div className="truncate text-[12px] text-gray-500">
                     {item.actor_email || "system"}
+                    {item.entity_type ? ` on ${item.entity_type}` : ""}
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] text-gray-400">
+                <span className="tnum shrink-0 whitespace-nowrap text-[12px] text-gray-500">
                   {timeAgo(item.created_at)}
                 </span>
-              </div>
+              </li>
             ))}
             {activity.length === 0 && (
-              <p className="px-3 py-8 text-center text-[13px] text-gray-400">
+              <li className="py-10 text-center text-[13px] text-gray-500">
                 No admin activity recorded yet.
-              </p>
+              </li>
             )}
-          </div>
-        </Card>
+          </ul>
+        </section>
       </div>
     </div>
   );

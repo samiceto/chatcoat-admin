@@ -154,7 +154,7 @@ export default function AdminAuditPage() {
                       {item.actor_email || "—"}
                     </div>
                     {item.actor_role && (
-                      <div className="text-[11px] text-gray-400">
+                      <div className="text-[12px] text-gray-400">
                         {item.actor_role.replace("_", " ")}
                       </div>
                     )}
@@ -171,7 +171,7 @@ export default function AdminAuditPage() {
                       </div>
                     )}
                     {item.entity_id && (
-                      <div className="font-mono text-[11px] text-gray-400">
+                      <div className="font-mono text-[12px] text-gray-400">
                         {item.entity_id.slice(0, 18)}
                       </div>
                     )}
@@ -183,7 +183,7 @@ export default function AdminAuditPage() {
                         <summary className="cursor-pointer font-medium hover:text-gray-900">
                           View changes
                         </summary>
-                        <pre className="mt-1.5 max-w-xs overflow-x-auto rounded-lg bg-gray-50 p-2.5 font-mono text-[11px] ring-1 ring-inset ring-gray-200">
+                        <pre className="mt-1.5 max-w-xs overflow-x-auto rounded-lg bg-gray-50 p-2.5 font-mono text-[12px] ring-1 ring-inset ring-gray-200">
                           {JSON.stringify(item.details, null, 1)}
                         </pre>
                       </details>

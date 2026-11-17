@@ -1,7 +1,7 @@
 "use client";
 
-import { ReactNode } from "react";
-import { Loader2, Search, SearchX } from "lucide-react";
+import { ReactNode, useEffect, useId, useRef } from "react";
+import { Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /* ---------------------------------- Page header ---------------------------------- */
@@ -16,14 +16,18 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-gray-900">{title}</h1>
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+      <div className="min-w-0">
+        <h1 className="font-display break-words text-[34px] text-gray-900">
+          {title}
+        </h1>
         {description && (
-          <p className="mt-1 text-sm text-gray-500">{description}</p>
+          <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-gray-500">
+            {description}
+          </p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -42,7 +46,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]",
+        "rounded-xl border border-gray-200 bg-white",
         padded && "p-5",
         className
       )}
@@ -53,13 +57,16 @@ export function Card({
 }
 
 export function CardTitle({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="text-sm font-semibold text-gray-900">{children}</h2>
-  );
+  return <h2 className="text-[15px] font-bold text-gray-900">{children}</h2>;
 }
 
 /* ---------------------------------- Stat ---------------------------------- */
 
+/**
+ * A single figure with a label. Stats sit in the page without a box: a thin
+ * rule on the left separates one figure from the next, so a row of them reads
+ * as one instrument strip rather than a set of cards.
+ */
 export function Stat({
   label,
   value,
@@ -74,27 +81,86 @@ export function Stat({
   deltaTone?: "up" | "down" | "neutral";
 }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between">
+    <div className="border-l-2 border-gray-200 py-1 pl-4">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-[13px] font-medium text-gray-500">{label}</span>
         {icon && <span className="text-gray-400">{icon}</span>}
       </div>
-      <div className="tnum mt-2 text-[28px] font-bold tracking-tight text-gray-900">
+      <div className="font-display tnum mt-1 text-[36px] text-gray-900">
         {value}
       </div>
       {delta && (
         <div
           className={cn(
-            "mt-1 text-xs font-medium",
-            deltaTone === "up" && "text-emerald-600",
-            deltaTone === "down" && "text-rose-600",
-            deltaTone === "neutral" && "text-gray-400"
+            "mt-1 text-[12px] font-medium",
+            deltaTone === "up" && "text-emerald-700",
+            deltaTone === "down" && "text-rose-700",
+            deltaTone === "neutral" && "text-gray-500"
           )}
         >
           {delta}
         </div>
       )}
-    </Card>
+    </div>
+  );
+}
+
+/* ---------------------------------- Readout ---------------------------------- */
+
+/**
+ * The one dark surface in the console: a panel of headline figures on the
+ * Overview page. Cells are separated by hairlines.
+ */
+export function Readout({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-gray-700 sm:grid-cols-4">
+      {children}
+    </div>
+  );
+}
+
+export function ReadoutCell({
+  label,
+  value,
+  note,
+  noteTone = "muted",
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  noteTone?: "ok" | "alert" | "muted";
+  wide?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "bg-gray-900 px-5 py-5 sm:px-6 sm:py-6",
+        wide && "col-span-2"
+      )}
+    >
+      <div className="text-[13px] font-medium text-gray-300">{label}</div>
+      <div
+        className={cn(
+          "font-display tnum mt-2 text-white",
+          wide ? "text-[64px] sm:text-[80px]" : "text-[40px] sm:text-[48px]"
+        )}
+      >
+        {value}
+      </div>
+      {note && (
+        <div
+          className={cn(
+            "mt-1 text-[13px] font-medium",
+            noteTone === "ok" && "text-emerald-300",
+            noteTone === "alert" && "text-rose-300",
+            noteTone === "muted" && "text-gray-400"
+          )}
+        >
+          {note}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -102,14 +168,24 @@ export function Stat({
 
 type BadgeTone = "gray" | "green" | "red" | "amber" | "blue" | "indigo" | "purple";
 
+/**
+ * Filled badges with a dot describe a state (Active, Suspended, Trialing).
+ * The "indigo" tone is the outlined tag used for names such as plans.
+ */
 const BADGE_TONES: Record<BadgeTone, string> = {
-  gray: "bg-gray-100 text-gray-700 ring-gray-200",
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  red: "bg-rose-50 text-rose-700 ring-rose-200",
-  amber: "bg-amber-50 text-amber-800 ring-amber-200",
-  blue: "bg-blue-50 text-blue-700 ring-blue-200",
-  indigo: "bg-indigo-50 text-indigo-700 ring-indigo-200",
-  purple: "bg-purple-50 text-purple-700 ring-purple-200",
+  gray: "bg-gray-100 text-gray-700",
+  green: "bg-emerald-50 text-emerald-800",
+  red: "bg-rose-50 text-rose-800",
+  amber: "bg-amber-50 text-amber-800",
+  blue: "bg-blue-50 text-blue-700",
+  indigo: "bg-white text-gray-800 ring-1 ring-inset ring-gray-300",
+  purple: "bg-purple-50 text-purple-700",
+};
+
+const BADGE_DOTS: Partial<Record<BadgeTone, string>> = {
+  green: "bg-emerald-600",
+  red: "bg-rose-600",
+  amber: "bg-amber-500",
 };
 
 export function Badge({
@@ -121,14 +197,16 @@ export function Badge({
   children: ReactNode;
   className?: string;
 }) {
+  const dot = BADGE_DOTS[tone];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-semibold",
         BADGE_TONES[tone],
         className
       )}
     >
+      {dot && <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", dot)} />}
       {children}
     </span>
   );
@@ -139,10 +217,9 @@ export function Badge({
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "danger-outline";
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    "bg-indigo-600 text-white hover:bg-indigo-700 shadow-[0_1px_2px_rgba(16,24,40,0.1)]",
+  primary: "bg-gray-900 text-white hover:bg-gray-700",
   secondary:
-    "bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50",
+    "bg-white text-gray-800 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 hover:ring-gray-400",
   danger: "bg-rose-600 text-white hover:bg-rose-700",
   "danger-outline":
     "bg-white text-rose-700 ring-1 ring-inset ring-rose-300 hover:bg-rose-50",
@@ -181,7 +258,7 @@ export function Button({
 export function inputClassName(extra?: string) {
   return cn(
     "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400",
-    "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
+    "focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20",
     extra
   );
 }
@@ -205,12 +282,14 @@ export function SearchInput({
     <div className={cn("relative", className)}>
       <Search
         size={15}
+        aria-hidden
         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
       />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder || "Search"}
         className={cn(inputClassName(), "pl-9")}
       />
     </div>
@@ -219,11 +298,17 @@ export function SearchInput({
 
 /* ---------------------------------- Table ---------------------------------- */
 
+/**
+ * Tables are ledgers: a heavy rule on top, hairlines between rows, and no
+ * outer box. First and last columns sit flush with the page edge.
+ */
 export function TableShell({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+    <div className="border-t-2 border-gray-900 bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">{children}</table>
+        <table className="w-full text-sm [&_td:first-child]:pl-0 [&_td:last-child]:pr-0 [&_th:first-child]:pl-0 [&_th:last-child]:pr-0">
+          {children}
+        </table>
       </div>
     </div>
   );
@@ -239,7 +324,7 @@ export function Th({
   return (
     <th
       className={cn(
-        "border-b border-gray-200 bg-gray-50/80 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500",
+        "whitespace-nowrap border-b border-gray-200 px-4 py-3 text-left text-[12px] font-semibold text-gray-500",
         className
       )}
     >
@@ -263,7 +348,7 @@ export function Td({
     <td
       colSpan={colSpan}
       rowSpan={rowSpan}
-      className={cn("border-b border-gray-100 px-4 py-3 align-middle", className)}
+      className={cn("border-b border-gray-200 px-4 py-3.5 align-middle", className)}
     >
       {children}
     </td>
@@ -278,7 +363,7 @@ export function Tr({
   className?: string;
 }) {
   return (
-    <tr className={cn("transition-colors last:[&_td]:border-b-0 hover:bg-gray-50/70", className)}>
+    <tr className={cn("transition-colors last:[&_td]:border-b-0 hover:bg-gray-50", className)}>
       {children}
     </tr>
   );
@@ -288,8 +373,11 @@ export function Tr({
 
 export function LoadingRow({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2.5 py-16 text-sm text-gray-500">
-      <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+    <div
+      role="status"
+      className="flex items-center justify-center gap-2.5 py-16 text-sm text-gray-500"
+    >
+      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
       <span>{label}</span>
     </div>
   );
@@ -306,12 +394,11 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-        <SearchX size={18} />
-      </span>
-      <p className="mt-3 text-sm font-semibold text-gray-900">{title}</p>
+      <p className="text-[15px] font-bold text-gray-900">{title}</p>
       {description && (
-        <p className="mt-1 max-w-sm text-[13px] text-gray-500">{description}</p>
+        <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-gray-500">
+          {description}
+        </p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -321,7 +408,10 @@ export function EmptyState({
 export function ErrorAlert({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-800">
+    <div
+      role="alert"
+      className="mb-5 rounded-r-lg border-l-[3px] border-rose-600 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-800"
+    >
       {message}
     </div>
   );
@@ -342,22 +432,46 @@ export function Modal({
   onClose: () => void;
   wide?: boolean;
 }) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Escape closes the dialog; focus moves into it unless a field already took it.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const el = dialogRef.current;
+    if (el && !el.contains(document.activeElement)) el.focus();
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-950/50 p-4 backdrop-blur-[2px]"
+      className="anim-scrim fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-950/50 p-4"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={cn(
-          "mt-10 w-full rounded-2xl bg-white shadow-2xl",
+          "anim-dialog mt-10 w-full rounded-2xl bg-white shadow-2xl outline-none",
           wide ? "max-w-2xl" : "max-w-lg"
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-[15px] font-semibold text-gray-900">{title}</h3>
+        <div className="border-b border-gray-200 px-6 py-5">
+          <h3 id={titleId} className="font-display text-[24px] text-gray-900">
+            {title}
+          </h3>
           {description && (
-            <p className="mt-0.5 text-[13px] text-gray-500">{description}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
+              {description}
+            </p>
           )}
         </div>
         <div className="px-6 py-5">{children}</div>
@@ -380,7 +494,7 @@ export function Pagination({
   total?: number;
 }) {
   return (
-    <div className="mt-4 flex items-center justify-between">
+    <div className="mt-5 flex items-center justify-between gap-3">
       <Button
         variant="secondary"
         disabled={page <= 1}
@@ -388,7 +502,7 @@ export function Pagination({
       >
         Previous
       </Button>
-      <span className="text-[13px] text-gray-500">
+      <span className="tnum text-[13px] text-gray-500">
         {total !== undefined && pageSize !== undefined
           ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total.toLocaleString()}`
           : `Page ${page} of ${totalPages}`}

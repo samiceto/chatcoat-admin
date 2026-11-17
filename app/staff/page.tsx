@@ -214,7 +214,7 @@ export default function AdminStaffPage() {
     <div className="space-y-3">
       {(catalog?.groups || []).map((group) => (
         <div key={group.key} className="rounded-xl border border-gray-200">
-          <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-gray-500">
+          <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 text-[12px] font-semibold text-gray-500">
             {group.label}
           </div>
           <div className="divide-y divide-gray-100">
@@ -304,12 +304,12 @@ export default function AdminStaffPage() {
               <Tr key={member.id} className={!member.is_active ? "opacity-55" : ""}>
                 <Td>
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-[12px] font-bold text-indigo-700">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-[12px] font-bold text-gray-700">
                       {(member.email?.[0] || "?").toUpperCase()}
                     </span>
                     <div>
                       <div className="font-semibold text-gray-900">{member.email}</div>
-                      <div className="text-[11px] text-gray-400">
+                      <div className="text-[12px] text-gray-400">
                         {member.has_signed_in ? "Signed in at least once" : "Invite pending"}
                       </div>
                     </div>
@@ -327,10 +327,10 @@ export default function AdminStaffPage() {
                     className="text-left"
                     title="Edit permissions"
                   >
-                    <span className="text-[13px] font-medium text-indigo-600 hover:underline">
+                    <span className="text-[13px] font-medium text-indigo-700 hover:underline">
                       {member.effective_permissions.length} permissions
                     </span>
-                    <span className="block text-[11px] text-gray-400">
+                    <span className="block text-[12px] text-gray-400">
                       {member.permissions ? "Custom" : "Role defaults"}
                     </span>
                   </button>
@@ -478,7 +478,7 @@ export default function AdminStaffPage() {
 
       <Card className="mt-4">
         <h3 className="flex items-center gap-2 text-[13px] font-semibold text-gray-900">
-          <ShieldCheck size={14} className="text-indigo-600" />
+          <ShieldCheck size={14} className="text-gray-700" />
           How permissions work
         </h3>
         <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">

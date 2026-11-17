@@ -173,7 +173,7 @@ export default function AdminWorkerPage() {
                 <span className="text-2xl font-bold text-gray-900">
                   {util.load_percent_last_hour}%
                   <span className="ml-2 text-sm font-medium text-gray-500">
-                    loaded ·{" "}
+                    loaded,{" "}
                     {Math.max(0, Math.round(100 - util.load_percent_last_hour))}
                     % free
                   </span>
@@ -243,7 +243,7 @@ export default function AdminWorkerPage() {
               <p className="mt-1 text-[13px] text-gray-600">
                 Agent turns and store syncs run in detached lanes, not the
                 serial queue. Running in lanes now:{" "}
-                <strong>{lanes.running}</strong> · Oldest agent wait:{" "}
+                <strong>{lanes.running}</strong>. Oldest agent wait:{" "}
                 <strong>{fmtWait(lanes.agent_oldest_wait_seconds)}</strong>
               </p>
               <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">

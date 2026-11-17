@@ -1,95 +1,126 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * ChatCoat Admin design tokens.
+ *
+ * Principle: colour means state. Surfaces and text are a cool ink-and-fog
+ * neutral; green / amber / red appear only to say something about status;
+ * cobalt is reserved for links, focus and selection.
+ *
+ * The stock `gray`, `indigo`, `emerald`, `amber`, `rose`, `purple`, `blue` and
+ * `teal` scales are re-pointed at this palette so every page that already
+ * uses those class names picks up the new look without per-page edits.
+ */
 const config: Config = {
   darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Archivo", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
       colors: {
-        // Flat elevation SaaS Design Tokens
-        canvas: "var(--canvas)",
-        surface: "var(--surface)",
-        inset: "var(--inset)",
-        divider: "var(--divider)",
-        "control-border": "var(--control-border)",
-        "text-main": "var(--text-main)",
-        "text-muted": "var(--text-muted)",
-        brand: {
-          DEFAULT: "#0F766E",
-          hover: "#115E59",
-          ring: "#14B8A6",
+        // Neutral scale: fog (50-200) → slate (400-600) → ink (800-950)
+        gray: {
+          50: "#F6F8FA",
+          100: "#EEF1F4",
+          200: "#DDE2E8",
+          300: "#C5CCD6",
+          400: "#66717F",
+          500: "#4F5A68",
+          600: "#3E4854",
+          700: "#2C3541",
+          800: "#1B2430",
+          900: "#0F1B2A",
+          950: "#0A121C",
         },
-        semantic: {
-          "success-bg": "var(--success-bg)",
-          "success-text": "var(--success-text)",
-          "warning-bg": "var(--warning-bg)",
-          "warning-text": "var(--warning-text)",
-          "danger-bg": "var(--danger-bg)",
-          "danger-text": "var(--danger-text)",
-          "info-bg": "var(--info-bg)",
-          "info-text": "var(--info-text)",
-          "ai-bg": "var(--ai-bg)",
-          "ai-text": "var(--ai-text)",
+        // Cobalt: links, focus, selection
+        indigo: {
+          50: "#F0F3FF",
+          100: "#E0E6FF",
+          200: "#C4CFFF",
+          300: "#9AAEFF",
+          400: "#6C86FA",
+          500: "#3E5CF0",
+          600: "#2540D9",
+          700: "#1D32B0",
+          800: "#182A8C",
+          900: "#14236E",
         },
-        primary: "#0F766E",
-        primaryDark: "#115E59",
-        navy: "#1A2D42",
-        ink: "var(--text-main)",
-        muted: "var(--text-muted)",
-        page: "var(--canvas)",
-        panel: "var(--surface)",
-        border: "var(--control-border)",
-        tealSoft: "#E6F4F1",
-        cream: "#E9DCC9",
-        accent: "#0F766E",
-        secondary: "#1A2D42",
-        warn: "#D97706",
-        danger: "#DC2626",
-        error: "#DC2626",
-        success: "#15803D",
-        // ChatCoat Dark Mode Official Design Tokens (mapped to flat elevation)
-        dark: {
-          page: "#0F172A",
-          sidebar: "#0F172A",
-          header: "#1E293B",
-          card: "#1E293B",
-          elevated: "#1E293B",
-          input: "#172033",
-          border: "#3B4A63",
-          borderStrong: "#475569",
-          primary: "#0F766E",
-          brightTeal: "#14B8A6",
-          softTeal: "#0E4444",
-          textPrimary: "#E6EDF6",
-          textSecondary: "#CBD5E1",
-          textMuted: "#94A3B8",
-          disabled: "#64748B",
-          success: "#22C55E",
-          warning: "#F59E0B",
-          danger: "#EF4444",
-          aiAccent: "#2DD4BF",
+        // Status: ok
+        emerald: {
+          50: "#E8F5EE",
+          100: "#CDE9D9",
+          200: "#A6D6BC",
+          300: "#74BE98",
+          400: "#3FA676",
+          500: "#15935F",
+          600: "#0E7A4F",
+          700: "#0B6642",
+          800: "#0A5236",
+          900: "#083F2B",
         },
+        // Status: watch
+        amber: {
+          50: "#FCF3E0",
+          100: "#F8E3B8",
+          200: "#F1CC85",
+          300: "#E5B04E",
+          400: "#D4950F",
+          500: "#C27A0A",
+          600: "#A66308",
+          700: "#8A5206",
+          800: "#6F4205",
+          900: "#553304",
+        },
+        // Status: stop
+        rose: {
+          50: "#FBEBEC",
+          100: "#F6D3D5",
+          200: "#EFB1B5",
+          300: "#E58A90",
+          400: "#DA5F67",
+          500: "#D2373F",
+          600: "#BC2A32",
+          700: "#A3202A",
+          800: "#7F1A22",
+          900: "#5F141A",
+        },
+        // Role / category tints used by a few badges
+        purple: {
+          50: "#F4EEF8",
+          100: "#E9DCF1",
+          200: "#DCCBE8",
+          700: "#5E3A7E",
+        },
+        blue: {
+          50: "#E8F1FA",
+          100: "#D2E3F4",
+          200: "#BAD5EE",
+          700: "#1F5A94",
+        },
+        teal: {
+          100: "#DCEBEA",
+          700: "#256A67",
+        },
+        // Named tokens for new code
+        ink: "#0F1B2A",
+        fog: "#EEF1F4",
+        rule: "#DDE2E8",
+        cobalt: "#2540D9",
       },
       borderRadius: {
-        card: "16px",
-        control: "10px",
-        chip: "999px",
+        // Tighter than stock: an instrument panel, not a bubble.
+        md: "4px",
+        lg: "6px",
+        xl: "8px",
+        "2xl": "10px",
       },
       boxShadow: {
-        card: "var(--shadow-card)",
-        modal: "var(--shadow-modal)",
-        dropdown: "var(--shadow-dropdown)",
-        xs: "var(--shadow-xs)",
-        sm: "var(--shadow-sm)",
-        DEFAULT: "var(--shadow-md)",
-        md: "var(--shadow-md)",
-        lg: "var(--shadow-lg)",
-        xl: "var(--shadow-xl)",
-        "2xl": "var(--shadow-2xl)",
-        inner: "var(--shadow-inner)",
-        neu: "var(--shadow-neu-surface)",
-        "neu-sm": "var(--shadow-neu-sm)",
-        "neu-inset": "var(--shadow-neu-recessed)",
+        sm: "0 1px 0 rgba(15, 27, 42, 0.04)",
+        DEFAULT: "0 1px 2px rgba(15, 27, 42, 0.08)",
+        "2xl": "0 24px 60px -12px rgba(15, 27, 42, 0.35)",
       },
     },
   },

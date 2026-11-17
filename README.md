@@ -46,3 +46,21 @@ Pages call `GET /api/admin/me` on the ChatCoat API with the Clerk session
 token as `Bearer`. The backend verifies the token and checks the
 `staff_users` table. Non-staff see "Admin access required". Suspended
 workspaces are blocked API-wide and cannot reach this dashboard's data.
+
+## Design system
+
+The console uses one typeface, **Archivo**, in two voices: normal width for
+working text and a condensed cut (`.font-display`) for page titles and the
+headline figures. Colour carries meaning only:
+
+- **Ink and fog** neutrals for surfaces and text (the `gray` scale in
+  `tailwind.config.ts` is remapped to them).
+- **Green, amber, red** appear only to describe status (Active, Needs review,
+  Suspended).
+- **Cobalt** (the `indigo` scale) is for links, focus and selection.
+
+Tables are ledgers (heavy top rule, hairline rows, no outer box). The Overview
+readout is the single dark surface. Shared pieces live in `components/ui.tsx`;
+because the stock Tailwind palettes are remapped, existing pages pick up the
+look without per-page changes. Keyboard focus is always visible and motion
+respects `prefers-reduced-motion`.

@@ -13,15 +13,16 @@ import {
   LifeBuoy,
   Loader2,
   LogOut,
+  Menu,
   ScrollText,
   Sparkles,
-  ShieldAlert,
-  ShieldCheck,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { ClerkTokenBridge } from "@/components/clerk-token-bridge";
+import { Button, inputClassName } from "@/components/ui";
 import { apiFetch, getAdminApiKey, setAdminApiKey } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import "./globals.css";
@@ -54,23 +55,64 @@ const NAV = [
   },
 ];
 
-const PAGE_TITLES: Record<string, string> = {
-  "/": "Overview",
-  "/orgs": "Organizations",
-  "/users": "Users",
-  "/plans": "Plans",
-  "/revenue": "Revenue",
-  "/support": "Support tickets",
-  "/staff": "Staff",
-  "/ai-models": "AI Models",
-  "/worker": "Worker",
-  "/audit": "Audit log",
-};
+function Wordmark({ size = "lg" }: { size?: "lg" | "sm" }) {
+  return (
+    <span
+      className={cn(
+        "font-display text-gray-900",
+        size === "lg" ? "text-[30px]" : "text-[24px]"
+      )}
+    >
+      ChatCoat
+    </span>
+  );
+}
 
-function pageTitleFor(pathname: string | null): string {
-  if (!pathname) return "Admin";
-  if (pathname.startsWith("/orgs/")) return "Organization";
-  return PAGE_TITLES[pathname] ?? "Admin";
+function ApiKeyForm({
+  value,
+  onChange,
+  onSubmit,
+  error,
+  verifying,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  error: string | null;
+  verifying: boolean;
+  className?: string;
+}) {
+  return (
+    <form onSubmit={onSubmit} className={className}>
+      <label htmlFor="admin-api-key" className="sr-only">
+        Admin API key
+      </label>
+      <input
+        id="admin-api-key"
+        type="password"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Paste the ADMIN_API_KEY"
+        autoComplete="off"
+        className={inputClassName()}
+      />
+      {error && (
+        <p role="alert" className="mt-2 text-[13px] font-semibold text-rose-700">
+          {error}
+        </p>
+      )}
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={verifying || !value.trim()}
+        className="mt-3"
+      >
+        {verifying && <Loader2 size={13} className="animate-spin" />}
+        <span>Sign in with key</span>
+      </Button>
+    </form>
+  );
 }
 
 function AdminGate({ children }: { children: React.ReactNode }) {
@@ -103,6 +145,7 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const [claiming, setClaiming] = useState(false);
   const [claimMsg, setClaimMsg] = useState<string | null>(null);
   const [slowLoad, setSlowLoad] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   // The sign-in page must stay reachable without staff access.
   const isPublicRoute = pathname?.startsWith("/sign-in");
@@ -137,6 +180,21 @@ function AdminGate({ children }: { children: React.ReactNode }) {
     checkAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPublicRoute, pathname, authLoaded, usingApiKey]);
+
+  // On small screens the navigation is a drawer: close it after navigating
+  // and when Escape is pressed.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNavOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [navOpen]);
 
   const signOutKey = () => {
     setAdminApiKey(null);
@@ -203,31 +261,71 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   const isLoading = loading || (!authLoaded && !usingApiKey);
   const showGate = !isLoading && (denied || !me);
 
+  const linkButton =
+    "font-semibold text-indigo-700 underline-offset-2 hover:underline";
+
   return (
-    <div className="min-h-screen bg-[#f6f7f9]">
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-[248px] flex-col bg-[#0d1117]">
-        <div className="flex h-16 items-center gap-2.5 border-b border-white/[0.07] px-5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-            <ShieldCheck size={16} className="text-white" />
-          </span>
-          <div>
-            <div className="text-[13px] font-bold leading-tight text-white">
-              ChatCoat
-            </div>
-            <div className="text-[11px] font-medium leading-tight text-gray-500">
-              Admin Console
-            </div>
+    <div className="min-h-screen bg-white">
+      {/* Small-screen bar */}
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200 bg-white px-4 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setNavOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={navOpen}
+          aria-controls="admin-nav"
+          className="-ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100"
+        >
+          <Menu size={20} />
+        </button>
+        <Wordmark size="sm" />
+      </header>
+
+      {navOpen && (
+        <div
+          aria-hidden
+          className="anim-scrim fixed inset-0 z-30 bg-gray-950/40 lg:hidden"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
+      {/* Rail */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-gray-200 bg-gray-100 transition-[transform,visibility] duration-200 lg:z-30 lg:w-[240px] lg:translate-x-0 lg:visible",
+          navOpen ? "translate-x-0 visible" : "-translate-x-full invisible"
+        )}
+      >
+        <div className="px-5 pb-6 pt-6">
+          <div className="flex items-start justify-between">
+            <Wordmark />
+            <button
+              type="button"
+              onClick={() => setNavOpen(false)}
+              aria-label="Close navigation"
+              className="-mr-2 -mt-1 flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200 lg:hidden"
+            >
+              <X size={18} />
+            </button>
           </div>
+          <div className="mt-1 text-[13px] text-gray-500">Admin console</div>
+          <span className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-0.5 text-[12px] font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+            Production
+          </span>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav
+          id="admin-nav"
+          aria-label="Main"
+          className="flex-1 overflow-y-auto pb-4"
+        >
           {NAV.map((group) => (
-            <div key={group.section} className="mb-5 last:mb-0">
-              <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-600">
+            <div key={group.section} className="mb-6 last:mb-0">
+              <div className="mb-1.5 px-5 text-[12px] font-semibold text-gray-500">
                 {group.section}
               </div>
-              <div className="space-y-0.5">
+              <div>
                 {group.items.map((item) => {
                   const active =
                     item.href === "/"
@@ -238,14 +336,15 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors",
+                        "flex items-center gap-3 border-l-[3px] py-2 pl-[17px] pr-4 text-[14px] transition-colors",
                         active
-                          ? "bg-indigo-600 text-white"
-                          : "text-gray-400 hover:bg-white/[0.06] hover:text-gray-100"
+                          ? "border-gray-900 bg-white font-semibold text-gray-900"
+                          : "border-transparent font-medium text-gray-600 hover:bg-gray-200/60 hover:text-gray-900"
                       )}
                     >
-                      <Icon size={16} strokeWidth={active ? 2.2 : 2} />
+                      <Icon size={16} strokeWidth={active ? 2.3 : 2} aria-hidden />
                       <span>{item.label}</span>
                     </Link>
                   );
@@ -255,67 +354,50 @@ function AdminGate({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-white/[0.07] p-3">
+        <div className="border-t border-gray-200 px-5 py-4">
           {me ? (
-            <div className="rounded-lg bg-white/[0.04] px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600/20 text-[11px] font-bold text-indigo-300">
-                  {(me.email?.[0] || "?").toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12px] font-semibold text-gray-200">
-                    {me.email}
-                  </div>
-                  <div className="text-[11px] text-gray-500">
-                    {me.role.replace("_", " ")}
-                    {usingApiKey && " · API key"}
-                  </div>
-                </div>
+            <div>
+              <div
+                className="truncate text-[13px] font-semibold text-gray-900"
+                title={me.email}
+              >
+                {me.email}
+              </div>
+              <div className="mt-0.5 text-[12px] text-gray-500">
+                {me.role.replace("_", " ")}
+                {usingApiKey && ", signed in with API key"}
               </div>
               {usingApiKey && (
                 <button
                   type="button"
                   onClick={signOutKey}
-                  className="mt-2 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-gray-400 hover:bg-white/[0.06] hover:text-gray-200"
+                  className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-gray-700 hover:text-gray-900 hover:underline"
                 >
-                  <LogOut size={13} />
+                  <LogOut size={14} aria-hidden />
                   <span>Sign out</span>
                 </button>
               )}
             </div>
           ) : (
-            <div className="px-2 py-1 text-[11px] text-gray-600">
-              Not signed in
-            </div>
+            <div className="text-[13px] text-gray-500">Not signed in</div>
           )}
         </div>
       </aside>
 
       {/* Main */}
-      <div className="pl-[248px]">
-        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
-          <div className="flex h-16 items-center justify-between px-8">
-            <h1 className="text-[15px] font-bold tracking-tight text-gray-900">
-              {pageTitleFor(pathname)}
-            </h1>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Production
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-[1200px] px-8 py-7">
+      <div className="lg:pl-[240px]">
+        <main className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
           {isLoading ? (
-            <div className="mx-auto max-w-md py-24 text-center">
-              <div className="flex items-center justify-center gap-3 text-sm text-gray-500">
-                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+            <div className="mx-auto max-w-md py-24">
+              <div
+                role="status"
+                className="flex items-center justify-center gap-3 text-sm text-gray-500"
+              >
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
                 <span>Checking admin access…</span>
               </div>
               {slowLoad && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-xs text-amber-900">
+                <div className="mt-6 rounded-r-lg border-l-[3px] border-amber-500 bg-amber-50 p-4 text-left text-[13px] leading-relaxed text-amber-900">
                   {!authLoaded && !usingApiKey ? (
                     clerkKeyPresent ? (
                       <p>
@@ -359,139 +441,98 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                       waking up from sleep — give it a moment and retry.
                     </p>
                   )}
-                  <div className="mt-3 flex items-center gap-4">
+                  <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
                     <button
                       type="button"
                       onClick={() => window.location.reload()}
-                      className="font-semibold text-indigo-700 hover:underline"
+                      className={linkButton}
                     >
                       Retry
                     </button>
-                    <span className="text-amber-700/50">·</span>
                     <button
                       type="button"
                       onClick={() => setShowKeyForm((v) => !v)}
-                      className="font-semibold text-indigo-700 hover:underline"
+                      className={linkButton}
                     >
                       {showKeyForm ? "Hide API key form" : "Use admin API key instead"}
                     </button>
                   </div>
                   {showKeyForm && (
-                    <form onSubmit={submitKey} className="mt-3">
-                      <input
-                        type="password"
-                        value={keyInput}
-                        onChange={(e) => setKeyInput(e.target.value)}
-                        placeholder="Paste ADMIN_API_KEY from Render"
-                        autoComplete="off"
-                        className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      />
-                      {keyError && (
-                        <p className="mt-1.5 font-semibold text-rose-700">
-                          {keyError}
-                        </p>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={verifyingKey || !keyInput.trim()}
-                        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                      >
-                        {verifyingKey && (
-                          <Loader2 size={13} className="animate-spin" />
-                        )}
-                        <span>Sign in with key</span>
-                      </button>
-                    </form>
+                    <ApiKeyForm
+                      value={keyInput}
+                      onChange={setKeyInput}
+                      onSubmit={submitKey}
+                      error={keyError}
+                      verifying={verifyingKey}
+                      className="mt-4"
+                    />
                   )}
                 </div>
               )}
             </div>
           ) : showGate ? (
-            <div className="mx-auto max-w-md py-20 text-center">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-200">
-                <ShieldAlert size={22} />
-              </span>
+            <div className="max-w-lg py-8 lg:py-16">
               {usingApiKey ? (
                 <>
-                  <h2 className="mt-4 text-lg font-bold text-gray-900">
+                  <h1 className="font-display text-[40px] text-gray-900">
                     Invalid API key
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-500">
+                  </h1>
+                  <p className="mt-3 text-[14px] leading-relaxed text-gray-500">
                     The saved admin API key was rejected. Clear it and try
                     again, or check the{" "}
                     <code className="font-semibold">ADMIN_API_KEY</code> value
                     in your API's Render environment.
                   </p>
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
                     onClick={signOutKey}
-                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-700"
+                    className="mt-6"
                   >
                     Clear key and sign in again
-                  </button>
+                  </Button>
                 </>
               ) : !isSignedIn ? (
                 <>
-                  <h2 className="mt-4 text-lg font-bold text-gray-900">
+                  <h1 className="font-display text-[40px] text-gray-900">
                     Sign in required
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-500">
+                  </h1>
+                  <p className="mt-3 text-[14px] leading-relaxed text-gray-500">
                     Sign in with your ChatCoat account to access the admin
                     console.
                   </p>
                   <Link
                     href="/sign-in"
-                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-700"
+                    className="mt-6 inline-flex items-center justify-center rounded-lg bg-gray-900 px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-gray-700"
                   >
                     Sign in
                   </Link>
-                  <div className="mt-4">
+                  <div className="mt-6">
                     <button
                       type="button"
                       onClick={() => setShowKeyForm((v) => !v)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-900"
+                      className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-gray-600 hover:text-gray-900 hover:underline"
                     >
-                      <KeyRound size={13} />
+                      <KeyRound size={14} aria-hidden />
                       <span>Use an admin API key instead</span>
                     </button>
                   </div>
                   {showKeyForm && (
-                    <form
+                    <ApiKeyForm
+                      value={keyInput}
+                      onChange={setKeyInput}
                       onSubmit={submitKey}
-                      className="mx-auto mt-3 max-w-sm rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm"
-                    >
-                      <input
-                        type="password"
-                        value={keyInput}
-                        onChange={(e) => setKeyInput(e.target.value)}
-                        placeholder="Paste ADMIN_API_KEY from Render"
-                        autoComplete="off"
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      />
-                      {keyError && (
-                        <p className="mt-1.5 text-xs font-semibold text-rose-600">
-                          {keyError}
-                        </p>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={verifyingKey || !keyInput.trim()}
-                        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                      >
-                        {verifyingKey && (
-                          <Loader2 size={13} className="animate-spin" />
-                        )}
-                        <span>Sign in with key</span>
-                      </button>
-                    </form>
+                      error={keyError}
+                      verifying={verifyingKey}
+                      className="mt-4 max-w-sm"
+                    />
                   )}
                 </>
               ) : (
                 <>
-                  <h2 className="mt-4 text-lg font-bold text-gray-900">
+                  <h1 className="font-display text-[40px] text-gray-900">
                     Admin access required
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-500">
+                  </h1>
+                  <p className="mt-3 text-[14px] leading-relaxed text-gray-500">
                     Signed in as{" "}
                     {user?.primaryEmailAddress?.emailAddress ?? "your account"},
                     which is not a staff member. If this is a fresh setup,
@@ -499,19 +540,22 @@ function AdminGate({ children }: { children: React.ReactNode }) {
                     closes permanently after the first claim.
                   </p>
                   {claimMsg && (
-                    <p className="mx-auto mt-3 max-w-sm rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+                    <p
+                      role="alert"
+                      className="mt-4 rounded-r-lg border-l-[3px] border-rose-600 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-800"
+                    >
                       {claimMsg}
                     </p>
                   )}
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
                     onClick={claimAdmin}
                     disabled={claiming}
-                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                    className="mt-6"
                   >
                     {claiming && <Loader2 size={13} className="animate-spin" />}
                     <span>Claim admin access</span>
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

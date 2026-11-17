@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/*
+ * Archivo is a variable font with a width axis. The whole console runs on it:
+ * normal width for working text, a condensed cut (.font-display) for page
+ * titles and the big figures. One family, two voices.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,37 +14,51 @@
 }
 
 :root {
-  /* Admin console tokens — distinct from the main product */
-  --admin-sidebar: #0d1117;
-  --admin-sidebar-hover: rgba(255, 255, 255, 0.06);
-  --admin-sidebar-active: #4f46e5;
-  --admin-bg: #f6f7f9;
-  --admin-surface: #ffffff;
-  --admin-border: #e5e7eb;
-  --admin-border-strong: #d1d5db;
-  --admin-text: #111827;
-  --admin-text-secondary: #6b7280;
-  --admin-text-tertiary: #9ca3af;
-  --admin-accent: #4f46e5;
-  --admin-accent-hover: #4338ca;
-  --admin-danger: #dc2626;
-  --admin-success: #059669;
-  --admin-warning: #d97706;
+  --ink: #0f1b2a;
+  --fog: #eef1f4;
+  --rule: #dde2e8;
+  --slate: #4f5a68;
+  --cobalt: #2540d9;
 }
 
 html {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--admin-bg);
-  color: var(--admin-text);
-  font-feature-settings: "cv11", "ss01";
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.font-mono, code {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+/* Page titles and headline figures use the condensed cut. */
+.font-display {
+  font-stretch: 72%;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.font-mono,
+code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Keyboard focus is always visible, whatever the component. */
+:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.on-ink:focus-visible {
+  outline-color: #ffffff;
+}
+
+::selection {
+  background: #dfe6ff;
+  color: var(--ink);
 }
 
 /* Scrollbars */
@@ -51,18 +70,55 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #c5ccd6;
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #8b96a5;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
-/* Number tabular for stats */
+/* Tabular numerals for anything that lines up in a column. */
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* Motion: only responses to a person's action (dialogs, the nav drawer). */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-dialog {
+  animation: dialog-in 140ms ease-out both;
+}
+.anim-scrim {
+  animation: scrim-in 140ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

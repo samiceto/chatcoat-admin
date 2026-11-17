@@ -113,7 +113,7 @@ export default function AdminUsersPage() {
                 <Th>User</Th>
                 <Th>Workspaces</Th>
                 <Th>Joined</Th>
-                <Th className="font-mono">ID</Th>
+                <Th>ID</Th>
               </tr>
             </thead>
             <tbody>
@@ -121,7 +121,7 @@ export default function AdminUsersPage() {
                 <Tr key={u.id}>
                   <Td>
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-[12px] font-bold text-indigo-700">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-[12px] font-bold text-gray-700">
                         {(u.email?.[0] || "?").toUpperCase()}
                       </span>
                       <div>
@@ -129,7 +129,7 @@ export default function AdminUsersPage() {
                           {u.name || u.email}
                         </div>
                         {u.name && (
-                          <div className="text-[11px] text-gray-400">{u.email}</div>
+                          <div className="text-[12px] text-gray-400">{u.email}</div>
                         )}
                       </div>
                     </div>
@@ -138,7 +138,7 @@ export default function AdminUsersPage() {
                   <Td className="text-[13px] text-gray-500">
                     {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
                   </Td>
-                  <Td className="font-mono text-[11px] text-gray-400">
+                  <Td className="font-mono text-[12px] text-gray-400">
                     {u.id.slice(0, 8)}…
                   </Td>
                 </Tr>

@@ -235,7 +235,7 @@ export default function AdminPlansPage() {
               <Tr key={plan.slug} className={!plan.is_active ? "opacity-55" : ""}>
                 <Td>
                   <div className="font-semibold text-gray-900">{plan.name}</div>
-                  <div className="font-mono text-[11px] text-gray-400">
+                  <div className="font-mono text-[12px] text-gray-400">
                     {plan.slug}
                   </div>
                 </Td>

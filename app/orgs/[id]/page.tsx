@@ -98,7 +98,7 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
         <div
-          className={`h-full rounded-full transition-all ${over ? "bg-rose-500" : pct > 85 ? "bg-amber-500" : "bg-indigo-600"}`}
+          className={`h-full rounded-full transition-all ${over ? "bg-rose-500" : pct > 85 ? "bg-amber-500" : "bg-gray-800"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -287,7 +287,7 @@ export default function AdminOrgDetailPage() {
     return (
       <div>
         <ErrorAlert message={error || "Organization not found."} />
-        <Link href="/orgs" className="text-[13px] font-semibold text-indigo-600 hover:underline">
+        <Link href="/orgs" className="text-[13px] font-semibold text-indigo-700 hover:underline">
           ← Back to organizations
         </Link>
       </div>
@@ -306,7 +306,7 @@ export default function AdminOrgDetailPage() {
 
       <PageHeader
         title={org.name}
-        description={`${org.owner_email || "No owner email"} · ${org.member_count} member${org.member_count === 1 ? "" : "s"} · Created ${org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}${org.trial_ends_at ? ` · Trial ends ${new Date(org.trial_ends_at).toLocaleDateString()}` : ""}${org.last_activity_at ? ` · Last activity ${new Date(org.last_activity_at).toLocaleDateString()}` : ""}`}
+        description={`${org.owner_email || "No owner email"}, ${org.member_count} member${org.member_count === 1 ? "" : "s"}, Created ${org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}${org.trial_ends_at ? `, Trial ends ${new Date(org.trial_ends_at).toLocaleDateString()}` : ""}${org.last_activity_at ? `, Last activity ${new Date(org.last_activity_at).toLocaleDateString()}` : ""}`}
         actions={
           <div className="flex gap-2">
             <Button variant="secondary" onClick={togglePurchaseBlock} disabled={saving}>
@@ -338,7 +338,7 @@ export default function AdminOrgDetailPage() {
           </Badge>
         )}
         {org.plan_slug && <Badge tone="gray">Admin-assigned plan</Badge>}
-        <span className="font-mono text-[11px] text-gray-400">{org.id}</span>
+        <span className="font-mono text-[12px] text-gray-400">{org.id}</span>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -442,7 +442,7 @@ export default function AdminOrgDetailPage() {
                       {OVERRIDE_METRICS.find((m) => m.key === metric)?.label || metric}
                     </span>
                     <span className="flex items-center gap-2.5">
-                      <span className="tnum font-bold text-indigo-700">
+                      <span className="tnum font-bold text-gray-900">
                         {value.toLocaleString()}
                       </span>
                       <button

@@ -138,11 +138,11 @@ export default function AdminOrgsPage() {
                   <Td>
                     <Link
                       href={`/orgs/${org.id}`}
-                      className="font-semibold text-gray-900 hover:text-indigo-600 hover:underline"
+                      className="font-semibold text-gray-900 hover:text-indigo-700 hover:underline"
                     >
                       {org.name}
                     </Link>
-                    <div className="font-mono text-[11px] text-gray-400">
+                    <div className="font-mono text-[12px] text-gray-400">
                       {org.id.slice(0, 8)}…
                     </div>
                   </Td>
@@ -152,7 +152,7 @@ export default function AdminOrgsPage() {
                   <Td>
                     <Badge tone="indigo">{org.plan_name}</Badge>
                     {org.plan_slug && (
-                      <span className="ml-2 text-[11px] text-gray-400">
+                      <span className="ml-2 text-[12px] text-gray-400">
                         admin-assigned
                       </span>
                     )}
