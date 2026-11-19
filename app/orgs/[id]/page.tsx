@@ -516,7 +516,7 @@ export default function AdminOrgDetailPage() {
                     aria-label="Trial length in days"
                   />
                   <span className="text-xs text-gray-400">days</span>
-                  <Button variant="primary" onClick={grantTrial} disabled={saving}>
+                  <Button variant="primary" onClick={grantTrial} disabled={saving} className="whitespace-nowrap">
                     Grant trial
                   </Button>
                 </div>
