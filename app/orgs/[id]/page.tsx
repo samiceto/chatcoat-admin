@@ -66,6 +66,25 @@ const OVERRIDE_METRICS = [
   { key: "workspaces", label: "Workspaces" },
 ];
 
+// The trial channel whitelist — mirrors the API (start-trial and the
+// entitlement layer). X and the WhatsApp agents are never trial channels.
+const TRIAL_CHANNELS = [
+  { key: "facebook", label: "Facebook" },
+  { key: "instagram", label: "Instagram" },
+  { key: "threads", label: "Threads" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "youtube", label: "YouTube" },
+  { key: "linkedin", label: "LinkedIn" },
+  { key: "pinterest", label: "Pinterest" },
+  { key: "telegram", label: "Telegram" },
+  { key: "discord", label: "Discord" },
+  { key: "bluesky", label: "Bluesky" },
+  { key: "wordpress", label: "WordPress" },
+  { key: "google_business", label: "Google Business" },
+  { key: "snapchat", label: "Snapchat" },
+  { key: "meta", label: "Meta" },
+];
+
 function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const over = limit > 0 && used > limit;
@@ -100,6 +119,8 @@ export default function AdminOrgDetailPage() {
   const [assistantKey, setAssistantKey] = useState("primary");
   const [overrideMetric, setOverrideMetric] = useState(OVERRIDE_METRICS[0].key);
   const [overrideValue, setOverrideValue] = useState("");
+  const [trialChannels, setTrialChannels] = useState<string[]>(["facebook", "instagram"]);
+  const [trialDays, setTrialDays] = useState("14");
 
   const load = useCallback(() => {
     if (!orgId) return;
@@ -220,6 +241,39 @@ export default function AdminOrgDetailPage() {
       () => apiFetch(`/api/admin/orgs/${orgId}/overrides/${metric}`, { method: "DELETE" }),
       "Couldn't remove the override."
     );
+
+  const toggleTrialChannel = (key: string) =>
+    setTrialChannels((prev) =>
+      prev.includes(key) ? prev.filter((c) => c !== key) : prev.length >= 2 ? prev : [...prev, key]
+    );
+
+  const grantTrial = () => {
+    if (!org) return;
+    const days = parseInt(trialDays, 10);
+    if (trialChannels.length === 0) {
+      setError("Pick at least 1 trial channel.");
+      return;
+    }
+    if (isNaN(days) || days < 1 || days > 90) {
+      setError("Trial length must be between 1 and 90 days.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Grant "${org.name}" a ${days}-day trial on ${trialChannels.join(", ")}? This creates a real trial — the org gets trial limits on those channels until it ends.`
+      )
+    ) {
+      return;
+    }
+    mutate(
+      () =>
+        apiFetch(`/api/admin/orgs/${orgId}/grant-trial`, {
+          method: "POST",
+          body: JSON.stringify({ channels: trialChannels, days }),
+        }),
+      "Couldn't grant the trial."
+    );
+  };
 
   if (loading) {
     return (
@@ -407,6 +461,66 @@ export default function AdminOrgDetailPage() {
               <p className="mt-3 text-xs text-gray-400">
                 No overrides — plan limits apply.
               </p>
+            )}
+          </div>
+
+          <div className="mt-6 border-t border-gray-100 pt-5">
+            <h3 className="text-sm font-semibold text-gray-900">Grant trial</h3>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Creates a real trial (the same record as the in-app start) under
+              admin authority — the one-trial-per-person rule does not apply.
+              Refused while a paid subscription, an active trial, or an
+              admin-assigned plan is in the way.
+            </p>
+            {org.trial_ends_at && new Date(org.trial_ends_at) > new Date() ? (
+              <p className="mt-3 text-[13px] font-medium text-emerald-700">
+                Trial active — ends{" "}
+                {new Date(org.trial_ends_at).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+                .
+              </p>
+            ) : (
+              <>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {TRIAL_CHANNELS.map((c) => {
+                    const selected = trialChannels.includes(c.key);
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => toggleTrialChannel(c.key)}
+                        disabled={saving || (!selected && trialChannels.length >= 2)}
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition ${
+                          selected
+                            ? "bg-indigo-600 text-white ring-indigo-600"
+                            : "bg-white text-gray-600 ring-gray-200 hover:ring-gray-300 disabled:opacity-40"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    value={trialDays}
+                    onChange={(e) => setTrialDays(e.target.value)}
+                    disabled={saving}
+                    className={inputClassName("w-20")}
+                    aria-label="Trial length in days"
+                  />
+                  <span className="text-xs text-gray-400">days</span>
+                  <Button variant="primary" onClick={grantTrial} disabled={saving}>
+                    Grant trial
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </Card>
