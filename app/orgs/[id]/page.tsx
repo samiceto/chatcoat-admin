@@ -34,6 +34,7 @@ type OrgDetail = {
   entitlements: {
     tier: string;
     name: string;
+    posts_model: string;
     max_profiles: number;
     max_posts_per_month: number;
     ai_credits: number;
@@ -219,6 +220,14 @@ export default function AdminOrgDetailPage() {
       "Couldn't update the purchase block."
     );
   };
+
+  // Posts limits follow the plan's own model: Agency counts one
+  // org-wide pool, every other plan counts per channel. The override
+  // field and the saved-override list label the posts metric with
+  // that unit so the typed number is never ambiguous.
+  const postsUnit = org?.entitlements.posts_model === "pool" ? "pool" : "per channel";
+  const metricLabel = (key: string, fallback: string) =>
+    key === "posts_per_month" ? `Posts / month (${postsUnit})` : fallback;
 
   const addOverride = () => {
     const value = parseInt(overrideValue, 10);
@@ -414,7 +423,7 @@ export default function AdminOrgDetailPage() {
               >
                 {OVERRIDE_METRICS.map((m) => (
                   <option key={m.key} value={m.key}>
-                    {m.label}
+                    {metricLabel(m.key, m.label)}
                   </option>
                 ))}
               </select>
@@ -439,7 +448,7 @@ export default function AdminOrgDetailPage() {
                     className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-[13px] ring-1 ring-inset ring-gray-200"
                   >
                     <span className="font-medium text-gray-700">
-                      {OVERRIDE_METRICS.find((m) => m.key === metric)?.label || metric}
+                      {metricLabel(metric, OVERRIDE_METRICS.find((m) => m.key === metric)?.label || metric)}
                     </span>
                     <span className="flex items-center gap-2.5">
                       <span className="tnum font-bold text-gray-900">
