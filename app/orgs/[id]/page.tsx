@@ -31,6 +31,12 @@ type OrgDetail = {
   purchase_block_reason: string | null;
   member_count: number;
   overrides: Record<string, number>;
+  posts_by_channel: {
+    platform: string;
+    used: number;
+    override: number | null;
+    effective_limit: number;
+  }[];
   entitlements: {
     tier: string;
     name: string;
@@ -226,8 +232,48 @@ export default function AdminOrgDetailPage() {
   // field and the saved-override list label the posts metric with
   // that unit so the typed number is never ambiguous.
   const postsUnit = org?.entitlements.posts_model === "pool" ? "pool" : "per channel";
-  const metricLabel = (key: string, fallback: string) =>
-    key === "posts_per_month" ? `Posts / month (${postsUnit})` : fallback;
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const metricLabel = (key: string, fallback: string) => {
+    if (key === "posts_per_month") return `Posts / month (${postsUnit})`;
+    if (key.startsWith("posts_per_month_"))
+      return `Posts / month · ${cap(key.slice("posts_per_month_".length).replace(/_/g, " "))} (per channel)`;
+    return fallback;
+  };
+  // On per-channel plans the single posts field is replaced by the
+  // per-channel list below, so the dropdown only offers it on pool
+  // plans (Agency), where one number really is the whole limit.
+  const visibleOverrideMetrics = OVERRIDE_METRICS.filter(
+    (m) => m.key !== "posts_per_month" || postsUnit === "pool"
+  );
+  const activeOverrideMetric = visibleOverrideMetrics.some((m) => m.key === overrideMetric)
+    ? overrideMetric
+    : visibleOverrideMetrics[0].key;
+  const [channelInputs, setChannelInputs] = useState<Record<string, string>>({});
+
+  const setChannelOverride = (platform: string) => {
+    const value = parseInt(channelInputs[platform] ?? "", 10);
+    if (isNaN(value) || value < 0) {
+      setError("Override value must be a non-negative number.");
+      return;
+    }
+    mutate(
+      () =>
+        apiFetch(`/api/admin/orgs/${orgId}/overrides`, {
+          method: "POST",
+          body: JSON.stringify({ metric: `posts_per_month_${platform}`, limit_value: value }),
+        }),
+      "Couldn't save the channel override."
+    );
+  };
+
+  const removeChannelOverride = (platform: string) => {
+    setChannelInputs((prev) => {
+      const next = { ...prev };
+      delete next[platform];
+      return next;
+    });
+    removeOverride(`posts_per_month_${platform}`);
+  };
 
   const addOverride = () => {
     const value = parseInt(overrideValue, 10);
@@ -239,7 +285,7 @@ export default function AdminOrgDetailPage() {
       () =>
         apiFetch(`/api/admin/orgs/${orgId}/overrides`, {
           method: "POST",
-          body: JSON.stringify({ metric: overrideMetric, limit_value: value }),
+          body: JSON.stringify({ metric: activeOverrideMetric, limit_value: value }),
         }),
       "Couldn't save the override."
     ).then(() => setOverrideValue(""));
@@ -416,12 +462,12 @@ export default function AdminOrgDetailPage() {
             </p>
             <div className="mt-3 flex gap-2">
               <select
-                value={overrideMetric}
+                value={activeOverrideMetric}
                 onChange={(e) => setOverrideMetric(e.target.value)}
                 disabled={saving}
                 className={inputClassName()}
               >
-                {OVERRIDE_METRICS.map((m) => (
+                {visibleOverrideMetrics.map((m) => (
                   <option key={m.key} value={m.key}>
                     {metricLabel(m.key, m.label)}
                   </option>
@@ -440,6 +486,64 @@ export default function AdminOrgDetailPage() {
                 Set
               </Button>
             </div>
+            {postsUnit !== "pool" && org.posts_by_channel.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-medium text-gray-700">Posts per channel</p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Override the posts limit for a single connected channel. Channels
+                  without an override keep the plan limit.
+                </p>
+                <ul className="mt-2 space-y-1.5">
+                  {org.posts_by_channel.map((ch) => (
+                    <li
+                      key={ch.platform}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-[13px] ring-1 ring-inset ring-gray-200"
+                    >
+                      <span className="font-medium text-gray-700">
+                        {cap(ch.platform.replace(/_/g, " "))}
+                        <span className="ml-2 text-xs font-normal text-gray-400">
+                          {ch.used.toLocaleString()} used · limit{" "}
+                          {ch.effective_limit.toLocaleString()}
+                          {ch.override !== null ? " · overridden" : ""}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={
+                            channelInputs[ch.platform] ??
+                            (ch.override !== null ? String(ch.override) : "")
+                          }
+                          onChange={(e) =>
+                            setChannelInputs((prev) => ({
+                              ...prev,
+                              [ch.platform]: e.target.value,
+                            }))
+                          }
+                          placeholder="Limit"
+                          disabled={saving}
+                          className={inputClassName("w-24")}
+                        />
+                        <Button onClick={() => setChannelOverride(ch.platform)} disabled={saving}>
+                          Set
+                        </Button>
+                        {ch.override !== null && (
+                          <button
+                            type="button"
+                            onClick={() => removeChannelOverride(ch.platform)}
+                            title="Remove override"
+                            className="text-gray-400 hover:text-rose-600"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {Object.keys(org.overrides).length > 0 ? (
               <ul className="mt-3 space-y-1.5">
                 {Object.entries(org.overrides).map(([metric, value]) => (
