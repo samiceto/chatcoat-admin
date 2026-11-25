@@ -250,19 +250,37 @@ export default function AdminOrgDetailPage() {
     : visibleOverrideMetrics[0].key;
   const [channelInputs, setChannelInputs] = useState<Record<string, string>>({});
 
+  // Per-row saving state: the page-global `saving` flag made every
+  // Set button on the page dim and disable together on one click,
+  // which reads as all the buttons firing at once (owner report
+  // 2026-11-25). Each channel row now saves independently — only
+  // the clicked row reacts.
+  const [channelSaving, setChannelSaving] = useState<string | null>(null);
+
+  const runChannelSave = async (platform: string, fn: () => Promise<unknown>) => {
+    setChannelSaving(platform);
+    setError(null);
+    try {
+      await fn();
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save the channel override.");
+    } finally {
+      setChannelSaving(null);
+    }
+  };
+
   const setChannelOverride = (platform: string) => {
     const value = parseInt(channelInputs[platform] ?? "", 10);
     if (isNaN(value) || value < 0) {
       setError("Override value must be a non-negative number.");
       return;
     }
-    mutate(
-      () =>
-        apiFetch(`/api/admin/orgs/${orgId}/overrides`, {
-          method: "POST",
-          body: JSON.stringify({ metric: `posts_per_month_${platform}`, limit_value: value }),
-        }),
-      "Couldn't save the channel override."
+    void runChannelSave(platform, () =>
+      apiFetch(`/api/admin/orgs/${orgId}/overrides`, {
+        method: "POST",
+        body: JSON.stringify({ metric: `posts_per_month_${platform}`, limit_value: value }),
+      })
     );
   };
 
@@ -272,7 +290,11 @@ export default function AdminOrgDetailPage() {
       delete next[platform];
       return next;
     });
-    removeOverride(`posts_per_month_${platform}`);
+    void runChannelSave(platform, () =>
+      apiFetch(`/api/admin/orgs/${orgId}/overrides/posts_per_month_${platform}`, {
+        method: "DELETE",
+      })
+    );
   };
 
   const addOverride = () => {
@@ -522,18 +544,22 @@ export default function AdminOrgDetailPage() {
                             }))
                           }
                           placeholder="Limit"
-                          disabled={saving}
+                          disabled={channelSaving === ch.platform}
                           className={inputClassName("w-24")}
                         />
-                        <Button onClick={() => setChannelOverride(ch.platform)} disabled={saving}>
-                          Set
+                        <Button
+                          onClick={() => setChannelOverride(ch.platform)}
+                          disabled={channelSaving === ch.platform}
+                        >
+                          {channelSaving === ch.platform ? "Saving…" : "Set"}
                         </Button>
                         {ch.override !== null && (
                           <button
                             type="button"
                             onClick={() => removeChannelOverride(ch.platform)}
+                            disabled={channelSaving === ch.platform}
                             title="Remove override"
-                            className="text-gray-400 hover:text-rose-600"
+                            className="text-gray-400 hover:text-rose-600 disabled:opacity-50"
                           >
                             <Trash2 size={14} />
                           </button>
